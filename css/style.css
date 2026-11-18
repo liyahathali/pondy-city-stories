@@ -1,0 +1,150 @@
+/* Vice-City-inspired HUD + menus. Pink/teal neon on sunset tones. */
+@font-face { font-family: 'HUD'; src: local('Impact'), local('Haettenschweiler'), local('Arial Black'); }
+:root { --pink: #ff4fa3; --teal: #23d5c7; --gold: #ffd23f; --ink: #0b0b12; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; color: #fff; user-select: none; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.hidden { display: none !important; }
+
+/* ---------------- HUD ---------------- */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#topRight { position: absolute; top: 18px; right: 24px; text-align: right; }
+#clockRow { font: 30px 'HUD', Impact, sans-serif; letter-spacing: 2px; color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+#clockRow #weather { font-size: 22px; margin-right: 8px; }
+#weaponRow { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 4px; }
+#fist { width: 62px; height: 62px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff55, #00000088); border: 3px solid #000; display: grid; place-items: center; font-size: 30px; }
+#healthBar { width: 170px; height: 14px; background: #3a0b0b; border: 2px solid #000; margin-left: auto; }
+#healthBar.low { animation: blink 0.5s steps(2) infinite; }
+#healthFill { height: 100%; width: 100%; background: linear-gradient(#ff7a9c, #e8174f); transition: width 0.2s; }
+#money { font: 30px 'HUD', Impact, sans-serif; color: #4fe07a; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; letter-spacing: 1px; margin-top: 2px; }
+#stars { margin-top: 2px; font-size: 30px; letter-spacing: 2px; }
+#stars span { color: #00000066; -webkit-text-stroke: 1.5px #000; }
+#stars span.on { color: var(--gold); text-shadow: 0 0 8px #ffb300; }
+#stars span.blink { color: #fff6; }
+#timer { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font: 44px 'HUD', Impact, sans-serif; text-shadow: 3px 3px 0 #000; display: none; }
+#timer.urgent { color: #ff4d4d; }
+#notify { position: absolute; top: 20px; left: 24px; max-width: 380px; background: rgba(0,0,0,0.75); border-left: 4px solid var(--pink); padding: 12px 16px; font-size: 16px; line-height: 1.35; opacity: 0; transform: translateX(-20px); transition: all .25s; }
+#notify.show { opacity: 1; transform: none; }
+#missionCard { position: absolute; top: 28%; left: 50%; transform: translate(-50%, -10px); text-align: center; opacity: 0; transition: all .4s; max-width: 640px; }
+#missionCard.show { opacity: 1; transform: translate(-50%, 0); }
+#mcTitle { font: 52px 'HUD', Impact, sans-serif; color: var(--pink); text-shadow: 3px 3px 0 #000, 0 0 18px #ff4fa388; letter-spacing: 1px; }
+#mcIntro { font-size: 18px; text-shadow: 1px 1px 2px #000; margin-top: 6px; }
+#objective { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); font-size: 21px; text-align: center; text-shadow: 2px 2px 2px #000, 0 0 6px #000; max-width: 70%; transition: opacity .3s; opacity: 0; }
+.y { color: var(--gold); } .r { color: #ff5252; } .b { color: #64b5ff; }
+#prompt { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 8px 14px; border-radius: 4px; font-size: 16px; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+kbd { background: #fff; color: #000; border-radius: 3px; padding: 1px 7px; font-weight: bold; box-shadow: 0 2px 0 #888; }
+#location { position: absolute; bottom: 24px; right: 30px; font: italic 40px 'HUD', Impact, sans-serif; color: #7ef3e7; text-shadow: 3px 3px 0 #000, 0 0 14px #23d5c766; text-align: right; opacity: 0; transition: opacity .6s; }
+#location small { display: block; font-size: 20px; color: #fff; font-style: normal; }
+#location.show { opacity: 1; }
+#minimap { position: absolute; left: 22px; bottom: 22px; width: 220px; height: 220px; filter: drop-shadow(0 4px 10px #0008); }
+#speedo { position: absolute; left: 260px; bottom: 26px; font: 26px 'HUD', Impact, sans-serif; text-shadow: 2px 2px 0 #000; display: none; }
+#speedo b { font-size: 44px; color: var(--teal); font-weight: normal; }
+#vehName { font-size: 18px; color: var(--gold); }
+#vehHealth { width: 130px; height: 8px; background: #222; border: 2px solid #000; margin-top: 4px; }
+#vehHealthFill { height: 100%; background: linear-gradient(90deg, #ffb74d, #66bb6a); }
+#bigMsg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(.9); text-align: center; opacity: 0; transition: all .35s; }
+#bigMsg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#bigTitle { font: 72px 'HUD', Impact, sans-serif; letter-spacing: 2px; text-shadow: 4px 4px 0 #000, 0 0 30px currentColor; }
+#bigSub { font: 36px 'HUD', Impact, sans-serif; color: #fff; text-shadow: 3px 3px 0 #000; }
+#damage { position: absolute; inset: 0; box-shadow: inset 0 0 160px 40px rgba(220,0,0,0.85); opacity: 0; }
+#bubbles .bubble { position: absolute; left: 0; top: 0; background: #fff; color: #111; padding: 6px 10px; border-radius: 12px; font-size: 14px; max-width: 240px; box-shadow: 0 2px 6px #0006; white-space: normal; }
+#bubbles .bubble::after { content: ''; position: absolute; left: 50%; bottom: -8px; border: 8px solid transparent; border-top-color: #fff; border-bottom: 0; transform: translateX(-50%); }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #fff8; border-radius: 50%; }
+@keyframes blink { 50% { opacity: .3; } }
+
+/* ---------------- Screens ---------------- */
+.screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5, 5, 15, 0.72); backdrop-filter: blur(3px); z-index: 10; }
+#title { background: linear-gradient(180deg, #1b0b3add 0%, #5b1f6a99 35%, #ff4f8b55 62%, #ffb34733 80%, #0d344888 100%); backdrop-filter: none; }
+#title .sunset { display: none; position: absolute; left: 50%; top: 52%; width: 360px; height: 360px; margin-left: -180px; border-radius: 50%; background: repeating-linear-gradient(180deg, #ffd23f 0 22px, transparent 22px 30px), radial-gradient(#ffd23f, #ff6f61); -webkit-mask: linear-gradient(#000 60%, transparent 60%); mask: linear-gradient(#000 60%, transparent 60%); opacity: 0.9; }
+.titleBox { position: relative; text-align: center; }
+.logo1 { font: 130px 'HUD', Impact, sans-serif; letter-spacing: 6px; color: #fff; text-shadow: 0 0 20px var(--pink), 6px 6px 0 var(--pink), 12px 12px 0 #3a0a4a; line-height: 1; }
+.logo2 { font: italic 56px 'Brush Script MT', 'Segoe Script', cursive; color: var(--teal); text-shadow: 0 0 14px var(--teal), 3px 3px 0 #000; margin-top: -6px; }
+.tag { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; margin: 10px 0 26px; text-shadow: 1px 1px 3px #000; }
+.credits { position: absolute; bottom: 14px; font-size: 12px; opacity: .7; }
+#loading { width: 420px; margin: 0 auto; }
+#loadBar { height: 10px; background: #0007; border: 2px solid #fff; }
+#loadFill { height: 100%; width: 0; background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width .2s; }
+#loadText { margin-top: 8px; font-size: 14px; text-shadow: 1px 1px 2px #000; }
+.menu { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 16px; }
+.menu button { pointer-events: auto; width: 280px; padding: 12px; font: 24px 'HUD', Impact, sans-serif; letter-spacing: 1.5px; color: #fff; background: linear-gradient(90deg, #ff4fa3cc, #7b2ff7cc); border: 2px solid #fff; border-radius: 4px; cursor: pointer; text-shadow: 2px 2px 0 #000; transition: transform .1s, box-shadow .1s; }
+.menu button:hover, .menu button:focus-visible { transform: scale(1.05); box-shadow: 0 0 18px var(--pink); outline: none; }
+.menu button:disabled { opacity: .4; cursor: default; transform: none; }
+.panel { background: linear-gradient(160deg, #1d1033ee, #0c2a3aee); border: 2px solid var(--pink); border-radius: 8px; padding: 24px 36px; min-width: 380px; max-height: 90vh; overflow: auto; box-shadow: 0 0 40px #ff4fa355; }
+.panel.wide { min-width: 720px; }
+.panel h1 { font: 48px 'HUD', Impact, sans-serif; margin: 0 0 12px; text-align: center; color: var(--teal); text-shadow: 3px 3px 0 #000; letter-spacing: 2px; }
+.panel .sub { text-align: center; margin-top: -6px; opacity: .85; }
+.cols { display: flex; gap: 30px; }
+table { border-collapse: collapse; font-size: 15px; }
+th { text-align: left; color: var(--gold); padding: 8px 0 4px; font-size: 17px; }
+td { padding: 3px 14px 3px 0; } td:first-child { color: #9ff; white-space: nowrap; }
+label { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin: 12px 0; font-size: 16px; }
+label.check { justify-content: flex-start; }
+select, input[type=range] { pointer-events: auto; }
+select { background: #111; color: #fff; border: 1px solid var(--pink); padding: 6px; font-size: 14px; }
+#pauseStats { text-align: center; font-size: 15px; line-height: 1.6; opacity: .9; }
+#garageGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+#garageGrid button { pointer-events: auto; background: #0008; border: 2px solid #ffffff44; border-radius: 6px; color: #fff; padding: 12px 8px; cursor: pointer; text-align: center; }
+#garageGrid button:hover { border-color: var(--pink); box-shadow: 0 0 14px var(--pink); }
+#garageGrid .ico { font-size: 34px; }
+#garageGrid .nm { font: 18px 'HUD', Impact, sans-serif; margin: 4px 0; letter-spacing: 1px; }
+#garageGrid .st { font-size: 12px; opacity: .8; }
+#mapScreen { display: none; flex-direction: column; background: rgba(0,0,0,0.85); }
+.mapHead { font: 28px 'HUD', Impact, sans-serif; color: var(--teal); margin-bottom: 8px; letter-spacing: 2px; }
+.mapHead .help { font: 14px Arial; color: #ccc; margin-left: 16px; letter-spacing: 0; }
+#bigmap { border: 3px solid var(--pink); cursor: crosshair; }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .8s; z-index: 5; }
+
+/* Tamil: fall back to system Tamil fonts (Nirmala UI on Windows, Tamil MN on macOS, Noto on Linux) */
+body.lang-ta, body.lang-ta .menu button, body.lang-ta #mcTitle, body.lang-ta #bigTitle, body.lang-ta #bigSub, body.lang-ta #location, body.lang-ta .panel h1, body.lang-ta .logo2, body.lang-ta #garageGrid .nm, body.lang-ta .mapHead {
+  font-family: 'Nirmala UI', 'Latha', 'Tamil Sangam MN', 'Tamil MN', 'Noto Sans Tamil', 'Segoe UI', Arial, sans-serif;
+}
+body.lang-ta .menu button { font-size: 19px; font-weight: bold; }
+body.lang-ta #mcTitle { font-size: 40px; font-weight: bold; }
+body.lang-ta #bigTitle { font-size: 60px; font-weight: bold; }
+body.lang-ta #location { font-size: 32px; font-weight: bold; }
+body.lang-ta .logo2 { font-style: normal; font-weight: bold; font-size: 46px; }
+.menu button.lang { width: 160px; font-size: 18px; background: linear-gradient(90deg, #23d5c7cc, #1b6a8acc); }
+#bubbles .bubble .ta { display: block; font-family: 'Nirmala UI', 'Latha', 'Noto Sans Tamil', 'Segoe UI', sans-serif; font-size: 15px; font-weight: 600; }
+#bubbles .bubble small { display: block; color: #555; font-size: 12px; margin-top: 2px; font-style: italic; }
+
+/* ---------------- car radio ---------------- */
+#radioBox { position: absolute; top: 74px; left: 50%; transform: translate(-50%, -8px); text-align: center; opacity: 0; transition: all .35s; max-width: 640px; }
+#radioBox.show { opacity: 1; transform: translate(-50%, 0); }
+#radioStation { font: italic 34px 'HUD', Impact, sans-serif; text-shadow: 3px 3px 0 #000, 0 0 14px currentColor; letter-spacing: 1px; }
+#radioSong { margin-top: 4px; font-size: 16px; text-shadow: 1px 1px 3px #000, 0 0 6px #000; line-height: 1.35; font-family: 'Nirmala UI', 'Latha', 'Noto Sans Tamil', 'Segoe UI', sans-serif; }
+#radioSong small { font-size: 13px; opacity: .85; }
+
+/* ================= touch controls (phones / tablets) ================= */
+#touch { position: fixed; inset: 0; z-index: 30; display: none; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+#touch #tLeft, #touch #tRight { position: absolute; top: 56px; bottom: 0; pointer-events: auto; touch-action: none; }
+#touch #tLeft { left: 0; width: 42%; }
+#touch #tRight { right: 0; width: 58%; }
+#tStick { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); background: radial-gradient(circle, rgba(0,0,0,.15), rgba(0,0,0,.35)); opacity: .35; pointer-events: none; transition: opacity .15s; }
+#tKnob { position: absolute; left: 37px; top: 37px; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 2px 8px #0008; }
+#tButtons { position: absolute; right: 18px; bottom: 18px; width: 230px; height: 230px; pointer-events: none; }
+.tbtn { position: absolute; width: 74px; height: 74px; border-radius: 50%; background: rgba(15,15,25,.55); border: 2px solid rgba(255,255,255,.6); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; touch-action: none; backdrop-filter: blur(2px); }
+.tbtn span { font-size: 28px; line-height: 1; }
+.tbtn small { font-size: 9px; margin-top: 2px; opacity: .85; letter-spacing: .5px; }
+.tbtn.on, .tb.on { background: rgba(255,95,162,.75); transform: scale(.94); }
+.b-jump { right: 0; bottom: 0; width: 88px; height: 88px; }
+.b-punch { right: 98px; bottom: 6px; }
+.b-enter { right: 6px; bottom: 100px; }
+.b-use { right: 96px; bottom: 92px; }
+.b-crouch { right: 170px; bottom: 60px; width: 58px; height: 58px; }
+#tTop { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none; }
+.tb { width: 44px; height: 44px; border-radius: 10px; background: rgba(15,15,25,.55); border: 1px solid rgba(255,255,255,.45); display: flex; align-items: center; justify-content: center; font-size: 22px; pointer-events: auto; touch-action: none; }
+#touch.menuOnly #tLeft, #touch.menuOnly #tRight, #touch.menuOnly #tStick, #touch.menuOnly #tButtons { display: none; }
+#touch.menuOnly #tTop .tb { display: none; }
+#touch.menuOnly #tTop .tb:nth-child(2), #touch.menuOnly #tTop .tb:nth-child(4) { display: flex; }
+/* compact HUD on phones so nothing sits under the thumbs */
+body.touch #minimap { left: 10px; top: 10px; bottom: auto; right: auto; width: 104px; height: 104px; }
+body.touch #notify { left: 124px !important; top: 10px !important; max-width: 30vw; font-size: 12px !important; padding: 6px 10px !important; }
+body.touch #speedo { left: 50%; transform: translateX(-50%); bottom: 64px; font-size: 18px; }
+body.touch #speedo b { font-size: 30px; }
+body.touch #prompt { bottom: auto; top: 62px; font-size: 12px; }
+body.touch #topRight { transform: scale(.72); transform-origin: top right; }
+body.touch #objective { font-size: 14px; }
+body.touch #location { transform: scale(.5); transform-origin: top right; top: 128px !important; bottom: auto !important; right: 10px !important; }
+body.touch canvas#game { touch-action: none; }
+#rotateMsg { display: none; position: fixed; inset: 0; z-index: 99; background: #120c1e; color: #fff; align-items: center; justify-content: center; flex-direction: column; text-align: center; font-size: 20px; gap: 12px; }
+@media (orientation: portrait) { body.touch #rotateMsg { display: flex; } }

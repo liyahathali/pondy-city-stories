@@ -1,0 +1,7 @@
+{
+  "name": "pondy-city-stories",
+  "version": "1.0.0",
+  "description": "Open-world 3D action game set in Pondicherry, built with Three.js",
+  "scripts": { "start": "node server.js" },
+  "license": "MIT"
+}

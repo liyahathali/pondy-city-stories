@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1030" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pondy City" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Pondy City Stories — Open World Pondicherry</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%8C%B4%3C/text%3E%3C/svg%3E" />
+  <script type="importmap">
+    { "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="rotateMsg"><div style="font-size:54px">📱↻</div><div>Turn your phone sideways to play</div><div style="font-size:15px;opacity:.7">போனை பக்கவாட்டில் திருப்புங்கள்</div></div>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud" class="hidden">
+    <div id="topRight">
+      <div id="clockRow"><span id="weather">☀</span><span id="clock">17:20</span></div>
+      <div id="weaponRow"><div id="fist">✊</div>
+        <div><div id="healthBar"><div id="healthFill"></div></div><div id="money">₹00000500</div></div>
+      </div>
+      <div id="stars"></div>
+    </div>
+    <div id="timer"></div>
+    <div id="notify"></div>
+    <div id="missionCard"><div id="mcTitle"></div><div id="mcIntro"></div></div>
+    <div id="objective"></div>
+    <div id="prompt"></div>
+    <div id="location"></div>
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <div id="radioBox"><div id="radioStation"></div><div id="radioSong"></div></div>
+    <div id="speedo"><div id="vehName"></div><div><b>0</b> km/h</div><div id="vehHealth"><div id="vehHealthFill"></div></div></div>
+    <div id="bigMsg"><div id="bigTitle"></div><div id="bigSub"></div></div>
+    <div id="damage"></div>
+    <div id="bubbles"></div>
+    <div id="crosshair"></div>
+  </div>
+
+  <!-- ================= Title ================= -->
+  <div id="title" class="screen">
+    <div class="sunset"></div>
+    <div class="titleBox">
+      <div class="logo1">PONDY</div>
+      <div class="logo2" data-i18n="title.logo2">CITY STORIES</div>
+      <div class="tag" data-i18n="title.tag">An open-world adventure in Puducherry</div>
+      <div id="loading"><div id="loadBar"><div id="loadFill"></div></div><div id="loadText">Loading…</div></div>
+      <div id="titleMenu" class="menu hidden">
+        <button id="btnNew" data-i18n="menu.new">New Game</button>
+        <button id="btnContinue" data-i18n="menu.continue">Continue</button>
+        <button class="btnControls" data-i18n="menu.controls">Controls</button>
+        <button class="btnSettings" data-i18n="menu.settings">Settings</button>
+        <button id="btnLang" class="lang" data-i18n="menu.langToggle">தமிழ்</button>
+        <button class="btnFull lang" data-i18n="menu.fullscreen">⛶ Fullscreen</button>
+      </div>
+    </div>
+    <div class="credits">Three.js • JavaScript • All art generated procedurally</div>
+  </div>
+
+  <!-- ================= Pause ================= -->
+  <div id="pause" class="screen hidden">
+    <div class="panel">
+      <h1 data-i18n="menu.paused">PAUSED</h1>
+      <div id="pauseStats"></div>
+      <div class="menu">
+        <button id="btnResume" data-i18n="menu.resume">Resume</button>
+        <button id="btnSave" data-i18n="menu.save">Save Game</button>
+        <button id="btnLoad" data-i18n="menu.load">Load Game</button>
+        <button id="btnMap" data-i18n="menu.map">Map</button>
+        <button class="btnControls" data-i18n="menu.controls">Controls</button>
+        <button class="btnSettings" data-i18n="menu.settings">Settings</button>
+        <button class="btnFull" data-i18n="menu.fullscreen">⛶ Fullscreen</button>
+        <button id="btnQuit" data-i18n="menu.quit">Quit to Title</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= Controls ================= -->
+  <div id="controls" class="screen hidden">
+    <div class="panel wide">
+      <h1 data-i18n="controls.title">CONTROLS</h1>
+      <div class="cols">
+        <table>
+          <tr><th colspan="2" data-i18n="controls.foot">On foot</th></tr>
+          <tr><td>W A S D / Arrows</td><td data-i18n="c.move">Move</td></tr>
+          <tr><td>Mouse</td><td data-i18n="c.look">Look around</td></tr>
+          <tr><td>Shift</td><td data-i18n="c.run">Run</td></tr>
+          <tr><td>Space</td><td data-i18n="c.jump">Jump</td></tr>
+          <tr><td>C / Ctrl</td><td data-i18n="c.crouch">Crouch</td></tr>
+          <tr><td>Left click / Q</td><td data-i18n="c.punch">Punch</td></tr>
+          <tr><td>F</td><td data-i18n="c.enter">Enter / exit / carjack vehicle</td></tr>
+          <tr><td>E</td><td data-i18n="c.interact">Talk · Buy chai · Start mission</td></tr>
+        </table>
+        <table>
+          <tr><th colspan="2" data-i18n="controls.driving">Driving</th></tr>
+          <tr><td>W / S</td><td data-i18n="c.accel">Accelerate / Brake &amp; reverse</td></tr>
+          <tr><td>A / D</td><td data-i18n="c.steer">Steer</td></tr>
+          <tr><td>Space</td><td data-i18n="c.handbrake">Handbrake (drift!)</td></tr>
+          <tr><td>H</td><td data-i18n="c.horn">Horn</td></tr>
+          <tr><td>G</td><td data-i18n="c.siren">Police siren (police car)</td></tr>
+          <tr><td>R</td><td data-i18n="c.radio">Change radio station</td></tr>
+          <tr><td>Mouse wheel</td><td data-i18n="c.zoom">Camera zoom</td></tr>
+          <tr><th colspan="2" data-i18n="controls.general">General</th></tr>
+          <tr><td>M</td><td data-i18n="c.map">Map (click to set waypoint)</td></tr>
+          <tr><td>V</td><td data-i18n="c.garage">Vehicle selection</td></tr>
+          <tr><td>N</td><td data-i18n="c.rain">Toggle rain</td></tr>
+          <tr><td>T</td><td data-i18n="c.time">Fast-forward time</td></tr>
+          <tr><td>K / L</td><td data-i18n="c.quick">Quick save / load</td></tr>
+          <tr><td>Esc / P</td><td data-i18n="c.pause">Pause</td></tr>
+        </table>
+      </div>
+      <div class="menu"><button class="btnBack" data-i18n="menu.back">Back</button></div>
+    </div>
+  </div>
+
+  <!-- ================= Settings ================= -->
+  <div id="settings" class="screen hidden">
+    <div class="panel">
+      <h1 data-i18n="settings.title">SETTINGS</h1>
+      <label><span data-i18n="settings.quality">Graphics quality</span>
+        <select id="setQuality"><option value="high" data-i18n="settings.qHigh">High</option><option value="medium" data-i18n="settings.qMed">Medium</option><option value="low" data-i18n="settings.qLow">Low</option></select>
+      </label>
+      <label><span data-i18n="settings.scale">Render scale (upscaler)</span> <span><input id="setScale" type="range" min="0.5" max="1" step="0.05" /> <b id="scaleVal">100%</b></span></label>
+      <label class="check"><input id="setFx" type="checkbox" /> <span data-i18n="settings.fx">Realistic effects (bloom, colour grading, reflections)</span></label>
+      <label class="check"><input id="setReal" type="checkbox" /> <span data-i18n="settings.real">Realistic 3D characters (nearby people)</span></label>
+      <label class="check"><input id="setPixel" type="checkbox" /> <span data-i18n="settings.pixel">Pixel art style (chunky textures, warm colours)</span></label>
+      <label><span data-i18n="settings.sens">Mouse sensitivity</span> <input id="setSens" type="range" min="0.3" max="2.5" step="0.1" /></label>
+      <label><span data-i18n="settings.vol">Volume</span> <input id="setVol" type="range" min="0" max="1" step="0.05" /></label>
+      <label><span data-i18n="settings.lang">Language</span>
+        <select id="setLang"><option value="en">English</option><option value="ta">தமிழ் (Tamil)</option></select>
+      </label>
+      <label class="check"><input id="setInvert" type="checkbox" /> <span data-i18n="settings.invert">Invert mouse Y</span></label>
+      <label class="check"><input id="setVoices" type="checkbox" /> <span data-i18n="settings.voices">NPC Tamil voices</span></label>
+      <label><span data-i18n="settings.radioVol">Radio volume</span> <input id="setRadioVol" type="range" min="0" max="1" step="0.05" /></label>
+      <div class="menu"><button class="btnBack" data-i18n="menu.back">Back</button></div>
+    </div>
+  </div>
+
+  <!-- ================= Vehicle selection ================= -->
+  <div id="garage" class="screen hidden">
+    <div class="panel wide">
+      <h1 data-i18n="garage.title">VEHICLE SELECTION</h1>
+      <p class="sub" data-i18n="garage.sub">Pick a ride</p>
+      <div id="garageGrid"></div>
+      <div class="menu"><button class="btnBack" data-i18n="garage.close">Close (V)</button></div>
+    </div>
+  </div>
+
+  <!-- ================= Map ================= -->
+  <div id="mapScreen" class="screen">
+    <div class="mapHead"><span data-i18n="map.head">MAP OF PONDICHERRY</span> <span class="help" data-i18n="map.help"></span></div>
+    <canvas id="bigmap"></canvas>
+  </div>
+
+  <div id="fade"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
