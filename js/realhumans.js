@@ -26,6 +26,53 @@ const CHILD = { Spine: 'Spine1', Head: 'HeadTop_End', LeftArm: 'LeftForeArm', Le
 const strip = (n) => n.replace(/^mixamorig:?/, '');
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+/* ---- restyle the built-in female model: denim jeans, black hair tied back (no puffs / headphones) ---- */
+function restyleWoman(scene, bones) {
+  let mesh = null; scene.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+  if (!mesh) return;
+  // 1. repaint: yellow pants -> denim, headphone reds/cyans in the hair area -> black hair
+  const mat = mesh.material, img = mat.map && mat.map.image;
+  if (img) {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d');
+    x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height), p = d.data, W = c.width, H = c.height;
+    for (let i = 0; i < p.length; i += 4) {
+      const r = p[i], g = p[i + 1], b = p[i + 2], px = (i / 4) % W, py = Math.floor(i / 4 / W);
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0, l = (r + g + b) / 3;
+      if (r > 170 && g > 140 && b < 130 && r - b > 90) {            // yellow cargo pants -> blue denim with weave noise
+        const k = l / 215, n = (Math.random() - 0.5) * 18;
+        p[i] = 58 * k + n; p[i + 1] = 92 * k + n; p[i + 2] = 142 * k + n;
+      } else if (py < H * 0.62 && !(px > W * 0.79 && py > H * 0.1 && py < H * 0.31) && sat > 0.4 && mx > 80) {   // headphones / glasses accents -> black
+        const v = 14 + Math.random() * 10; p[i] = v; p[i + 1] = v * 0.9; p[i + 2] = v * 0.85;
+      }
+    }
+    x.putImageData(d, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.flipY = mat.map.flipY; t.colorSpace = mat.map.colorSpace; t.wrapS = mat.map.wrapS; t.wrapT = mat.map.wrapT;
+    mat.map = t; mat.needsUpdate = true;
+  }
+}
+const KURTI = [[0x1f1f22, 0xb5462e, 0xe9c9a0], [0x7b1e3a, 0xd4af37, 0xf3e3c3], [0x1d4e89, 0xe6e6e6, 0xd4af37], [0x2e6b4f, 0xf2d16b, 0xc0392b], [0xf1e4cc, 0xb03a2e, 0x1d4e89], [0xd35400, 0x1b2631, 0xf7dc6f], [0x5b2c6f, 0xf5cba7, 0xd4af37]];
+const _kurtiTex = [];
+function kurtiTex(i) {   // printed kurti: base fabric, scattered flower motifs, embroidered yoke at the front, patterned hem border
+  if (_kurtiTex[i]) return _kurtiTex[i];
+  const [base, acc, acc2] = KURTI[i % KURTI.length].map((h) => '#' + h.toString(16).padStart(6, '0'));
+  const W = 512, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, W, H);
+  for (let k = 0; k < 900; k++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)'; x.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+  const flower = (cx, cy, r) => { x.fillStyle = acc; for (let a = 0; a < 8; a++) { x.beginPath(); x.ellipse(cx + Math.cos(a * Math.PI / 4) * r * 0.55, cy + Math.sin(a * Math.PI / 4) * r * 0.55, r * 0.4, r * 0.18, a * Math.PI / 4, 0, Math.PI * 2); x.fill(); } x.fillStyle = acc2; x.beginPath(); x.arc(cx, cy, r * 0.25, 0, Math.PI * 2); x.fill(); };
+  for (let k = 0; k < 26; k++) flower(Math.random() * W, 70 + Math.random() * (H - 150), 9 + Math.random() * 6);
+  // hem border band (canvas bottom = bottom of the cylinder)
+  x.fillStyle = acc2; x.fillRect(0, H - 62, W, 62); x.fillStyle = acc;
+  for (let s = 0; s < W; s += 32) { x.beginPath(); x.moveTo(s, H - 31); x.lineTo(s + 16, H - 52); x.lineTo(s + 32, H - 31); x.lineTo(s + 16, H - 10); x.closePath(); x.fill(); }
+  x.fillStyle = base; for (let s = 0; s < W; s += 32) x.fillRect(s + 13, H - 34, 6, 6);
+  // embroidered yoke centred on the front (u = 0 wraps the canvas edges)
+  for (const ox of [0, W]) {
+    x.fillStyle = acc2; x.fillRect(ox - 46, 0, 92, 120); x.fillStyle = acc;
+    for (let yy = 10; yy < 110; yy += 18) for (let xx = -38; xx < 38; xx += 18) { x.beginPath(); x.moveTo(ox + xx, yy + 8); x.lineTo(ox + xx + 8, yy); x.lineTo(ox + xx + 16, yy + 8); x.lineTo(ox + xx + 8, yy + 16); x.fill(); }
+    x.fillStyle = base; x.beginPath(); x.moveTo(ox - 10, 0); x.lineTo(ox, 46); x.lineTo(ox + 10, 0); x.fill();   // keyhole neckline
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (_kurtiTex[i] = t);
+}
 let _clothTex = null;
 function CLOTH_TEX() {   // woven cotton texture shared by all cloth pieces (tinted per person)
   if (_clothTex) return _clothTex;
@@ -109,6 +156,7 @@ export class RealHumans {
       const scene = gl.scene; scene.updateMatrixWorld(true);
       const bones = {}; scene.traverse((o) => { if (o.isBone) bones[strip(o.name)] = o; });
       if (!bones.Hips || !bones.Head || !bones.LeftUpLeg) { console.warn('character has no Mixamo-style skeleton:', key); continue; }
+      if (gender === 'woman' && key === 'woman') restyleWoman(scene, bones);
       const prefix = Object.keys(bones).length && [...Object.values(bones)][0].name.startsWith('mixamorig') ? 'mixamorig' : '';
       const hipsY = bones.Hips.getWorldPosition(_v).y;
       const rest = {};
@@ -149,6 +197,17 @@ export class RealHumans {
           const pm = new THREE.Matrix4().compose(new THREE.Vector3(ch.x + 0.02 * u, ch.y - 0.16 * u, ch.z + 0.12 * u), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.08, 0, 0.62)), new THREE.Vector3(1, 1, 1));
           attach.pallu = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: pg, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', pm) };
         }
+        if (gender === 'woman' && ch) {
+          const kTop = ch.y + 0.06 * u, kBot = hp.y - 0.42 * u, kh = kTop - kBot;
+          const prof = [[0.205, 0], [0.175, 0.3], [0.15, 0.55], [0.128, 0.72], [0.13, 0.86], [0.118, 1]].map(([r, t]) => new THREE.Vector2(r * u, t * kh - kh / 2));
+          attach.kurti = { bone: bones.Spine1 ? 'Spine1' : 'Spine', geo: new THREE.LatheGeometry(prof, 28), m: local(bones.Spine1 ? 'Spine1' : 'Spine', new THREE.Matrix4().makeTranslation(hp.x, kBot + kh / 2, hp.z + 0.005 * u)), kurti: true };
+          const hd = P('Head'), ht = P('HeadTop_End') || hd.clone().add(new THREE.Vector3(0, 0.2 * u, 0)), hr = (ht.y - hd.y) * 0.55;
+          attach.bun = { bone: 'Head', geo: new THREE.SphereGeometry(hr * 0.42, 14, 10), m: local('Head', new THREE.Matrix4().makeTranslation(hd.x, hd.y + hr * 0.75, hd.z - hr * 1.05)), solid: 0x0d0b0a };
+          attach.bindi = { bone: 'Head', geo: new THREE.CircleGeometry(hr * 0.06, 12), m: local('Head', new THREE.Matrix4().makeTranslation(hd.x, hd.y + hr * 0.95, hd.z + hr * 1.02)), solid: 0xc0001a };
+          const nk = P('Neck') || hd;
+          const tor = new THREE.TorusGeometry(hr * 0.62, hr * 0.045, 6, 28); tor.rotateX(Math.PI / 2 - 0.25);
+          attach.necklace = { bone: bones.Neck ? 'Neck' : 'Head', geo: tor, m: local(bones.Neck ? 'Neck' : 'Head', new THREE.Matrix4().makeTranslation(nk.x, nk.y - hr * 0.2, nk.z + hr * 0.12)), metal: true };
+        }
         if (sh) {
           const tg = new THREE.BoxGeometry(0.16 * u, 0.025 * u, 0.42 * u);
           const tm = new THREE.Matrix4().compose(new THREE.Vector3(sh.x - 0.03 * u, sh.y + 0.05 * u, sh.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -0.25)), new THREE.Vector3(1, 1, 1));
@@ -176,7 +235,10 @@ export class RealHumans {
     const cloth = {};
     for (const [k, A] of Object.entries(T.attach || {})) {
       if (!bones[A.bone]) continue;
-      const m = new THREE.Mesh(A.geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: CLOTH_TEX() }));
+      const mat = A.metal ? new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 0.9 })
+        : A.solid != null ? new THREE.MeshStandardMaterial({ color: A.solid, roughness: 0.6, side: THREE.DoubleSide })
+        : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: A.kurti ? null : CLOTH_TEX() });
+      const m = new THREE.Mesh(A.geo, mat);
       m.matrixAutoUpdate = false; m.matrix.copy(A.m); m.castShadow = true; m.visible = false; m.frustumCulled = false; bones[A.bone].add(m); cloth[k] = m;
     }
     const root = new THREE.Group(); root.add(model); root.scale.setScalar(T.scale);
@@ -204,6 +266,15 @@ export class RealHumans {
     show('wrap', wrap, L.pants); show('belt', wrap && !L.female, L.lungiStripes || L.borderColor || L.pants);
     show('border', wrap, L.border || L.borderColor || L.lungiStripes || (L.dhoti ? 0xd4ac0d : L.pants));
     show('pallu', !!(L.female && L.saree), L.shirt === L.pants ? L.pants : (L.pants));
+    if (av.gender === 'woman' && av.builtin) {
+      const kurti = !(L.saree);
+      if (C.kurti) { C.kurti.visible = kurti; if (kurti) { C.kurti.material.map = kurtiTex(L._kurti ??= Math.floor(Math.random() * KURTI.length)); C.kurti.material.color.setHex(0xffffff); C.kurti.material.needsUpdate = true; } }
+      show('bun', true); show('bindi', !L.western || Math.random() < 0.5); show('necklace', true, Math.random() < 0.5 ? 0xd4af37 : 0xdadada);
+      if (C.necklace) C.necklace.material.color.setHex((L._gold ??= Math.random() < 0.5) ? 0xd4af37 : 0xdcdcdc);
+      // skin tone: brighten / darken the base texture per person
+      const sk = new THREE.Color(L.skin || 0x9a6a4a), lum = sk.r * 0.3 + sk.g * 0.59 + sk.b * 0.11;
+      for (const o of av.meshes) o.material.color.setRGB(1, 1, 1).multiplyScalar(0.85 + lum * 2.2);
+    }
     show('towel', !!(L.towelShoulder || L.towel), typeof L.towelShoulder === 'number' ? L.towelShoulder : 0xf5f5f0);
     if (wrap) for (const o of av.meshes) if (/Outfit_Bottom/.test(o.material.name || o.name)) o.material.color.copy(new THREE.Color(L.skin || 0x8d5524)).lerp(new THREE.Color(1, 1, 1), 0.2);
     // body variety: height from the look, build varies per person, elders stoop slightly
