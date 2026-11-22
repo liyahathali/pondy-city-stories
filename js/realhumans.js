@@ -12,6 +12,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
 import { G } from './state.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeGLTFLoader } from './models.js';
 
 const BASES = { man: 'models/chars/man.glb', woman: 'models/chars/woman.glb' };
@@ -103,7 +104,21 @@ function CLOTH_TEX() {   // woven cotton texture shared by all cloth pieces (tin
   _clothTex = new THREE.CanvasTexture(c); _clothTex.wrapS = _clothTex.wrapT = THREE.RepeatWrapping; _clothTex.repeat.set(4, 3); _clothTex.colorSpace = THREE.SRGBColorSpace;
   return _clothTex;
 }
-const HAIR_GEO = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.58);
+// Indian men's short hair (side part, a little volume on top, tapered nape, sideburns) and a thick moustache,
+// both modelled in a unit head frame (centre of the skull, +z = face).
+const HAIR_GEO = (() => {
+  const cap = new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.6); cap.rotateX(-0.4); cap.scale(0.93, 0.98, 1.0); cap.translate(0, 0.0, -0.04);
+  const top = new THREE.SphereGeometry(0.8, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.5); top.scale(0.7, 0.34, 0.55); top.translate(0.12, 0.5, 0.42);
+  const parts = [cap];
+  for (const sx of [-1, 1]) { const sb = new THREE.BoxGeometry(0.06, 0.3, 0.16); sb.translate(sx * 0.84, -0.2, 0.22); parts.push(sb); }
+  return mergeGeometries(parts.map((g) => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; }));
+})();
+const MOUSTACHE_GEO = (() => {
+  const parts = [];
+  for (const sx of [-1, 1]) { const h = new THREE.CapsuleGeometry(0.075, 0.26, 4, 8); h.rotateZ(Math.PI / 2 + sx * 0.22); h.scale(1, 1, 0.55); h.translate(sx * 0.15, -0.74, 0.86); parts.push(h.toNonIndexed()); }
+  for (const g of parts) for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+  return mergeGeometries(parts);
+})();
 const DOWN = new THREE.Vector3(0, -1, 0), XAXIS = new THREE.Vector3(1, 0, 0);
 
 const LIMBS = ['LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm', 'LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'];
@@ -197,8 +212,8 @@ export class RealHumans {
       let hairLocal = null;
       if (key === 'man') {
         const hb = bones.Head, top = bones.HeadTop_End.getWorldPosition(new THREE.Vector3()), hp = hb.getWorldPosition(new THREE.Vector3());
-        const hh = top.y - hp.y, c = hp.clone().lerp(top, 0.5); c.z -= hh * 0.1;
-        const wm = new THREE.Matrix4().compose(c, new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0)), new THREE.Vector3(hh * 0.47, hh * 0.42, hh * 0.53));
+        const hh = top.y - hp.y, c = hp.clone().lerp(top, 0.47); c.z -= hh * 0.06;
+        const wm = new THREE.Matrix4().compose(c, new THREE.Quaternion(), new THREE.Vector3(hh * 0.48, hh * 0.5, hh * 0.54));
         hairLocal = hb.matrixWorld.clone().invert().multiply(wm);
       }
       // rigid clothing pieces glued to bones: veshti/lungi/saree wrap (Hips), saree pallu (chest), shoulder towel
@@ -266,6 +281,8 @@ export class RealHumans {
     if (T.hairLocal) {
       hair = new THREE.Mesh(HAIR_GEO, new THREE.MeshStandardMaterial({ color: 0x141210, roughness: 0.75 }));
       hair.matrixAutoUpdate = false; hair.matrix.copy(T.hairLocal); hair.castShadow = true; bones.Head.add(hair);
+      const mo = new THREE.Mesh(MOUSTACHE_GEO, new THREE.MeshStandardMaterial({ color: 0x0f0d0c, roughness: 0.8 }));
+      mo.matrixAutoUpdate = false; mo.matrix.copy(T.hairLocal); mo.visible = false; bones.Head.add(mo); hair.userData.moustache = mo;
     }
     const cloth = {};
     for (const [k, A] of Object.entries(T.attach || {})) {
@@ -289,11 +306,15 @@ export class RealHumans {
       const n = o.material.name || o.name;
       if (!av.builtin) continue;   // drop-in models keep their own clothes and skin
       if (av.gender === 'woman') { tint(o.material, skinN.getHex(), 0.3); continue; }
-      if (/Skin|Body/.test(n)) tint(o.material, skinN.getHex(), 0.78);
+      if (/Skin|Body/.test(n)) {           // convert the model's light skin to the person's Indian skin tone
+        const want = new THREE.Color(L.skin || 0x8d5524), base = new THREE.Color().setRGB(0.86, 0.66, 0.56, THREE.SRGBColorSpace);
+        o.material.color.setRGB(Math.min(1.3, want.r / base.r * 1.05), Math.min(1.3, want.g / base.g * 1.05), Math.min(1.3, want.b / base.b * 1.05));
+      }
+      else if (/Eye/.test(n)) o.material.color.setHex(0x3a2516);
       else if (/Outfit_Top/.test(n)) tint(o.material, L.police ? 0xc2a46b : L.shirt, L.police || L.lungi || L.dhoti ? 0.85 : 0.55);
       else if (/Outfit_Bottom/.test(n)) tint(o.material, L.police ? 0xb59a62 : L.pants, L.police ? 0.85 : 0.6);
       else if (/Headwear/.test(n)) { o.visible = !!(L.police || L.hat || (L.cap && Math.random() < 0.5)); if (o.visible) tint(o.material, L.police ? 0xb71c1c : (L.cap || L.hat), 0.85); }
-      else if (/Beard/.test(n)) o.visible = !!(L.beard || L.moustache);
+      else if (/Beard/.test(n)) o.visible = false;   // replaced by an Indian-style moustache
     }
     // traditional wear on the realistic bodies, from the person's outfit
     const C = av.cloth || {}, show = (k, v, col) => { if (C[k]) { C[k].visible = v; if (v && col != null) C[k].material.color.setHex(col); } };
@@ -331,6 +352,7 @@ export class RealHumans {
     const bw = 0.92 + Math.random() * 0.18, ht = (L.h || 1) * (L.old ? 0.97 : 1);
     av.root.scale.set(av.T.scale * bw * ht, av.T.scale * ht, av.T.scale * (0.95 + (bw - 1) * 0.6) * ht);
     av.stoop = L.old ? 0.22 : 0;
+    if (av.hair && av.hair.userData.moustache) av.hair.userData.moustache.visible = !!(L.moustache || L.beard || L.old || Math.random() < 0.35);
     if (av.hair) { av.hair.visible = !L.bald; av.hair.material.color.setHex(L.old ? 0xbdbdbd : 0x141210);
     }
   }
