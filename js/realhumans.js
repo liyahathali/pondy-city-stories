@@ -26,6 +26,16 @@ const CHILD = { Spine: 'Spine1', Head: 'HeadTop_End', LeftArm: 'LeftForeArm', Le
 const strip = (n) => n.replace(/^mixamorig:?/, '');
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+let _clothTex = null;
+function CLOTH_TEX() {   // woven cotton texture shared by all cloth pieces (tinted per person)
+  if (_clothTex) return _clothTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  x.fillStyle = '#f2f2f2'; x.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 64; i += 2) { x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(i, 0, 1, 64); x.fillRect(0, i, 64, 1); }
+  for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(0,0,0,0.06)'; x.fillRect(Math.random() * 64, 0, 3, 64); }   // soft vertical folds
+  _clothTex = new THREE.CanvasTexture(c); _clothTex.wrapS = _clothTex.wrapT = THREE.RepeatWrapping; _clothTex.repeat.set(4, 3); _clothTex.colorSpace = THREE.SRGBColorSpace;
+  return _clothTex;
+}
 const HAIR_GEO = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.58);
 const DOWN = new THREE.Vector3(0, -1, 0), XAXIS = new THREE.Vector3(1, 0, 0);
 
@@ -123,7 +133,29 @@ export class RealHumans {
         const wm = new THREE.Matrix4().compose(c, new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0)), new THREE.Vector3(hh * 0.47, hh * 0.42, hh * 0.53));
         hairLocal = hb.matrixWorld.clone().invert().multiply(wm);
       }
-      this.templates[key] = { key, gender, builtin: !key.startsWith('x:'), scene, clips, rest, scale: 0.95 / hipsY, hairLocal };
+      // rigid clothing pieces glued to bones: veshti/lungi/saree wrap (Hips), saree pallu (chest), shoulder towel
+      const attach = {};
+      {
+        const P = (n) => bones[n] && bones[n].getWorldPosition(new THREE.Vector3());
+        const hp = P('Hips'), ft = P('LeftFoot') || P('LeftLeg'), ch = P('Spine2') || P('Spine1'), sh = P('RightShoulder') || P('RightArm');
+        const u = hp.y / 0.95;                                         // template units per metre
+        const local = (bone, m) => bones[bone].matrixWorld.clone().invert().multiply(m);
+        const top = hp.y + (gender === 'woman' ? -0.02 : 0.08) * u, bot = Math.max(ft.y + 0.05 * u, 0.06 * u), h = top - bot, rT = (gender === 'woman' ? 0.135 : 0.17) * u, rB = (gender === 'woman' ? 0.27 : 0.3) * u;
+        attach.wrap = { bone: 'Hips', geo: new THREE.CylinderGeometry(rT, rB, h, 22, 1, true), m: local('Hips', new THREE.Matrix4().makeTranslation(hp.x, bot + h / 2, hp.z)) };
+        attach.border = { bone: 'Hips', geo: new THREE.CylinderGeometry(rB * 1.01, rB * 1.012, 0.07 * u, 22, 1, true), m: local('Hips', new THREE.Matrix4().makeTranslation(hp.x, bot + 0.035 * u, hp.z)) };
+        attach.belt = { bone: 'Hips', geo: new THREE.CylinderGeometry(rT * 1.02, rT * 1.02, 0.06 * u, 22, 1, true), m: local('Hips', new THREE.Matrix4().makeTranslation(hp.x, top - 0.03 * u, hp.z)) };
+        if (ch) {
+          const pg = new THREE.PlaneGeometry(0.2 * u, 0.42 * u);
+          const pm = new THREE.Matrix4().compose(new THREE.Vector3(ch.x + 0.02 * u, ch.y - 0.16 * u, ch.z + 0.12 * u), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.08, 0, 0.62)), new THREE.Vector3(1, 1, 1));
+          attach.pallu = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: pg, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', pm) };
+        }
+        if (sh) {
+          const tg = new THREE.BoxGeometry(0.16 * u, 0.025 * u, 0.42 * u);
+          const tm = new THREE.Matrix4().compose(new THREE.Vector3(sh.x - 0.03 * u, sh.y + 0.05 * u, sh.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -0.25)), new THREE.Vector3(1, 1, 1));
+          const tb = bones.RightShoulder ? 'RightShoulder' : 'Spine2'; attach.towel = { bone: tb, geo: tg, m: local(tb, tm) };
+        }
+      }
+      this.templates[key] = { attach, key, gender, builtin: !key.startsWith('x:'), scene, clips, rest, scale: 0.95 / hipsY, hairLocal };
       this.byGender[gender].push(key); this.pool[key] = [];
     }
     this.ready = true;
@@ -141,10 +173,16 @@ export class RealHumans {
       hair = new THREE.Mesh(HAIR_GEO, new THREE.MeshStandardMaterial({ color: 0x141210, roughness: 0.75 }));
       hair.matrixAutoUpdate = false; hair.matrix.copy(T.hairLocal); hair.castShadow = true; bones.Head.add(hair);
     }
+    const cloth = {};
+    for (const [k, A] of Object.entries(T.attach || {})) {
+      if (!bones[A.bone]) continue;
+      const m = new THREE.Mesh(A.geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: CLOTH_TEX() }));
+      m.matrixAutoUpdate = false; m.matrix.copy(A.m); m.castShadow = true; m.visible = false; m.frustumCulled = false; bones[A.bone].add(m); cloth[k] = m;
+    }
     const root = new THREE.Group(); root.add(model); root.scale.setScalar(T.scale);
     const mixer = new THREE.AnimationMixer(model);
     const actions = {}; for (const [k, c] of Object.entries(T.clips)) if (c) actions[k] = mixer.clipAction(c);
-    return { kind, gender: T.gender, builtin: T.builtin, hair, root, model, meshes, bones, restLocal, mixer, actions, cur: null, T, host: null, hidden: [], last: new THREE.Vector3(), speed: 0 };
+    return { kind, cloth, gender: T.gender, builtin: T.builtin, hair, root, model, meshes, bones, restLocal, mixer, actions, cur: null, T, host: null, hidden: [], last: new THREE.Vector3(), speed: 0 };
   }
 
   dress(av, L) {
@@ -155,11 +193,23 @@ export class RealHumans {
       if (!av.builtin) continue;   // drop-in models keep their own clothes and skin
       if (av.gender === 'woman') { tint(o.material, skinN.getHex(), 0.3); continue; }
       if (/Skin|Body/.test(n)) tint(o.material, skinN.getHex(), 0.55);
-      else if (/Outfit_Top/.test(n)) tint(o.material, L.police ? 0xc2a46b : L.shirt, L.police ? 0.85 : 0.55);
+      else if (/Outfit_Top/.test(n)) tint(o.material, L.police ? 0xc2a46b : L.shirt, L.police || L.lungi || L.dhoti ? 0.85 : 0.55);
       else if (/Outfit_Bottom/.test(n)) tint(o.material, L.police ? 0xb59a62 : L.pants, L.police ? 0.85 : 0.6);
       else if (/Headwear/.test(n)) { o.visible = !!(L.police || L.hat || (L.cap && Math.random() < 0.5)); if (o.visible) tint(o.material, L.police ? 0xb71c1c : (L.cap || L.hat), 0.85); }
       else if (/Beard/.test(n)) o.visible = !!(L.beard || L.moustache);
     }
+    // traditional wear on the realistic bodies, from the person's outfit
+    const C = av.cloth || {}, show = (k, v, col) => { if (C[k]) { C[k].visible = v; if (v && col != null) C[k].material.color.setHex(col); } };
+    const wrap = L.female ? !!L.saree : !!(L.lungi || L.dhoti);
+    show('wrap', wrap, L.pants); show('belt', wrap && !L.female, L.lungiStripes || L.borderColor || L.pants);
+    show('border', wrap, L.border || L.borderColor || L.lungiStripes || (L.dhoti ? 0xd4ac0d : L.pants));
+    show('pallu', !!(L.female && L.saree), L.shirt === L.pants ? L.pants : (L.pants));
+    show('towel', !!(L.towelShoulder || L.towel), typeof L.towelShoulder === 'number' ? L.towelShoulder : 0xf5f5f0);
+    if (wrap) for (const o of av.meshes) if (/Outfit_Bottom/.test(o.material.name || o.name)) o.material.color.copy(new THREE.Color(L.skin || 0x8d5524)).lerp(new THREE.Color(1, 1, 1), 0.2);
+    // body variety: height from the look, build varies per person, elders stoop slightly
+    const bw = 0.92 + Math.random() * 0.18, ht = (L.h || 1) * (L.old ? 0.97 : 1);
+    av.root.scale.set(av.T.scale * bw * ht, av.T.scale * ht, av.T.scale * (0.95 + (bw - 1) * 0.6) * ht);
+    av.stoop = L.old ? 0.22 : 0;
     if (av.hair) { av.hair.visible = !L.bald; av.hair.material.color.setHex(L.old ? 0xbdbdbd : 0x141210);
     }
   }
@@ -240,6 +290,7 @@ export class RealHumans {
     const a = this.play(av, clip);
     if (a) a.timeScale = clip === 'walk' ? THREE.MathUtils.clamp(av.speed / 1.3, 0.6, 1.8) : clip === 'run' ? THREE.MathUtils.clamp(av.speed / 5, 0.7, 1.5) : 1;
     av.mixer.update(dt);
+    if (av.stoop && av.bones.Spine) av.bones.Spine.rotateX(av.stoop);
     const up = UPPER_PROXY[pose] || (h.parts.armR.userData.umbrella ? ['RightArm', 'RightForeArm'] : null);
     if (up) this.proxy(av, up);
   }

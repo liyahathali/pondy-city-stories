@@ -19,7 +19,7 @@ export const OUTFITS = {
   // yellow shirt, striped lungi, white veshti folded and tied around the waist on top
   lungiUncle: () => ({ female: false, shirt: 0xf6e04b, pants: 0xf2f2ee, lungi: true, lungiStripes: 0x2e7d4f, waistCloth: 0xf7f7f2, moustache: true, hair: 0x111111, h: 0.97 }),
   // elderly man: short white dhoti, white shawl draped over one shoulder, bare chest, round specs, walking stick, newspaper
-  dhotiElder: () => ({ female: false, old: true, bald: true, hair: 0xd0d0d0, bareChest: true, dhoti: true, skirtLen: 0.5, pants: 0xf3f0e6, shawl: 0xf3f0e6, roundGlasses: true, stick: true, newspaper: true, h: 0.98 }),
+  dhotiElder: () => ({ female: false, old: true, hair: 0xcfcfcf, shirt: pick([0xffffff, 0xf3efe2, 0xdfe8f0]), dhoti: true, skirtLen: 0.5, pants: 0xf3f0e6, borderColor: pick([0x2e7d32, 0x8d2b0b, 0xd4ac0d]), towelShoulder: 0xf7f3e8, moustache: true, stick: Math.random() < 0.4, newspaper: true, h: 0.97 }),
   autoDriver: () => ({ female: false, shirt: 0xb59a62, pants: 0xb59a62, towelShoulder: 0xffffff, moustache: true, hair: 0x111111, h: 1.0 }),
   fisherman: () => ({ female: false, vest: true, shirt: 0xf5f5f5, pants: pick([0x1565c0, 0xc62828, 0x2e7d32]), lungi: true, lungiStripes: 0x111111, skirtLen: 0.55, turban: 0xf4e04d, moustache: true, hair: 0x111111, h: 0.98 }),
   priest: () => ({ female: false, bareChest: true, dhoti: true, pants: 0xf3eedc, shawl: 0xd4ac0d, vibhuti: true, hair: 0x111111, h: 0.98, bald: Math.random() < 0.5 }),
