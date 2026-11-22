@@ -94,6 +94,17 @@ function kurtiTex(i) {   // printed kurti: base fabric, scattered flower motifs,
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (_kurtiTex[i] = t);
 }
+let _denim = null;
+function DENIM_TEX() {   // twill weave + seams, tinted per person (blue denim, olive/khaki cargo, black)
+  if (_denim) return _denim;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = '#e8e8e8'; x.fillRect(0, 0, 128, 128);
+  for (let i = -128; i < 128; i += 3) { x.strokeStyle = 'rgba(0,0,0,0.09)'; x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 128, 128); x.stroke(); }
+  for (let k = 0; k < 900; k++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'; x.fillRect(Math.random() * 128, Math.random() * 128, 1, 2); }
+  x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(62, 0, 3, 128); x.fillStyle = 'rgba(230,180,90,0.5)'; x.fillRect(66, 0, 1, 128);   // side seam + stitching
+  _denim = new THREE.CanvasTexture(c); _denim.wrapS = _denim.wrapT = THREE.RepeatWrapping; _denim.repeat.set(2, 2); _denim.colorSpace = THREE.SRGBColorSpace;
+  return _denim;
+}
 let _clothTex = null;
 function CLOTH_TEX() {   // woven cotton texture shared by all cloth pieces (tinted per person)
   if (_clothTex) return _clothTex;
@@ -244,6 +255,18 @@ export class RealHumans {
           const hd = P('Head'), ht = P('HeadTop_End') || hd.clone().add(new THREE.Vector3(0, 0.2 * u, 0)), hr = (ht.y - hd.y) * 0.55;
           const tw = new THREE.TorusGeometry(hr * 0.92, hr * 0.2, 8, 24); tw.rotateX(Math.PI / 2); tw.scale(1, 1, 1.12);
           attach.headTowel = { bone: 'Head', geo: tw, m: local('Head', new THREE.Matrix4().compose(new THREE.Vector3(hd.x, hd.y + hr * 0.95, hd.z - hr * 0.08), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.18, 0, 0)), new THREE.Vector3(1, 1, 1))) };
+          // baggy trouser legs: loose tubes along thigh and shin bones, flared and bunched at the ankle
+          const tubeAlong = (a, b, r0, r1, boneName, key2) => {
+            const dir = b.clone().sub(a), len = dir.length(), g2 = new THREE.CylinderGeometry(r1, r0, len * 1.22, 18, 4, true);
+            const pz = g2.attributes.position; for (let i = 0; i < pz.count; i++) { const yy = pz.getY(i); pz.setX(i, pz.getX(i) * (1 + 0.06 * Math.sin(yy / len * 9))); } // fabric folds
+            g2.computeVertexNormals();
+            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize().negate());
+            attach[key2] = { bone: boneName, geo: g2, m: local(boneName, new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1))), baggy: true };
+          };
+          for (const side of ['Left', 'Right']) {
+            const th = P(side + 'UpLeg'), kn2 = P(side + 'Leg'), an = P(side + 'Foot');
+            if (th && kn2 && an) { tubeAlong(th.clone().add(new THREE.Vector3(0, 0.02 * u, 0)), kn2, 0.105 * u, 0.088 * u, side + 'UpLeg', 'baggyT' + side[0]); tubeAlong(kn2, an.clone().add(new THREE.Vector3(0, 0.01 * u, 0)), 0.088 * u, 0.098 * u, side + 'Leg', 'baggyS' + side[0]); }
+          }
           const bp = new THREE.BoxGeometry(0.3 * u, 0.4 * u, 0.13 * u);
           attach.backpack = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: bp, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', new THREE.Matrix4().makeTranslation(ch.x, ch.y - 0.06 * u, ch.z - 0.19 * u)), solid: 0x263238 };
         }
@@ -289,7 +312,7 @@ export class RealHumans {
       if (!bones[A.bone]) continue;
       const mat = A.metal ? new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 0.9 })
         : A.solid != null ? new THREE.MeshStandardMaterial({ color: A.solid, roughness: 0.6, side: THREE.DoubleSide })
-        : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: A.kurti || A.garment ? null : CLOTH_TEX() });
+        : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: A.kurti || A.garment ? null : A.baggy ? DENIM_TEX() : CLOTH_TEX() });
       const m = new THREE.Mesh(A.geo, mat);
       m.matrixAutoUpdate = false; m.matrix.copy(A.m); m.castShadow = true; m.visible = false; m.frustumCulled = false; bones[A.bone].add(m); cloth[k] = m;
     }
@@ -333,8 +356,12 @@ export class RealHumans {
       if (fishy) { show('wrap', false); show('border', false); show('belt', false); show('wrapShort', true, L.pants); }
       else show('wrapShort', false);
       show('headTowel', !!(L.turban || fishy), typeof L.turban === 'number' ? L.turban : 0xf4e04d);
+      const baggy = !wrap && !fishy && !L.police && (L.college || L.ripped || L.baggy || (L.youth && Math.random() < 0.6));
+      const pc = L.baggyCol ??= (Math.random() < 0.65 ? (L.pants || 0x2c4a7a) : [0x5d6b3a, 0x8a7a5a, 0x2b2b2b, 0x4a5a6a][Math.floor(Math.random() * 4)]);
+      for (const k of ['baggyTL', 'baggyTR', 'baggySL', 'baggySR']) show(k, baggy, pc);
       show('backpack', !!L.backpack, typeof L.backpack === 'number' ? L.backpack : 0x263238);
       if (!wrap && !fishy) for (const o of av.meshes) if (/Outfit_Bottom/.test(o.material.name || o.name)) o.material.color.copy(new THREE.Color(L.pants || 0x2c4a7a).lerp(new THREE.Color(1, 1, 1), 0.08));
+      if (baggy) for (const o of av.meshes) if (/Outfit_Bottom/.test(o.material.name || o.name)) o.material.color.set(pc).multiplyScalar(0.8);
       for (const o of av.meshes) if (/Footwear/.test(o.material.name || o.name)) o.material.color.setHex(fishy ? 0x3a2a1e : 0xffffff);   // rubber chappals for fishermen
     }
     if (av.gender === 'woman' && av.builtin) {
