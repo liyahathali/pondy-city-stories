@@ -57,7 +57,7 @@ export function randomLook(kind = 'civ') {
       pants: pick([0x556b2f, 0x111111, 0x7fa7d6, 0xd7ccc8]), hoops: true, glasses: r() < 0.5, bag: r() < 0.5 ? 0x111111 : null, phone: true, sneakers: true, bindi: r() < 0.2 };
   }
   if (kind === 'youthM') return { skin: pick(SKIN), female: false, h: 0.98 + r() * 0.08, hair: 0x111111, shirt: pick([0x212121, 0xffffff, 0xe53935, 0x1e88e5, 0xfdd835, 0x43a047, 0x8e24aa, 0xff7043]),
-    pants: pick([0x2c4a7a, 0x1f3a5f, 0x37474f, 0x111111, 0xc8b48a]), shorts: r() < 0.2, phone: r() < 0.8, cap: r() < 0.3 ? pick([0x111111, 0xd32f2f, 0x1565c0]) : null, moustache: r() < 0.5, beard: r() < 0.35, backpack: r() < 0.25 ? 0x263238 : null };
+    pants: pick([0x2c4a7a, 0x1f3a5f, 0x37474f, 0x111111, 0xc8b48a]), shorts: r() < 0.2, phone: r() < 0.8, cap: r() < 0.3 ? pick([0x111111, 0xd32f2f, 0x1565c0]) : null, moustache: r() < 0.35, beard: r() < 0.3, backpack: r() < 0.55 ? pick([0x263238, 0x1a237e, 0x4e342e, 0x212121]) : null, college: true };
   if (kind === 'youthF') {
     const western = r() < 0.5, c = pick(SAREE);
     return { skin: pick(SKIN), female: true, saree: false, salwar: !western, western, h: 0.93 + r() * 0.07, hair: 0x111111,

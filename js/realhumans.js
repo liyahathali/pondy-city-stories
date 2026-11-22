@@ -50,6 +50,26 @@ function restyleWoman(scene, bones) {
     mat.map = t; mat.needsUpdate = true;
   }
 }
+const _garm = new Map();
+function garmentTex(pat, colour) {   // shirt / T-shirt / banian fabric with a front placket, collar band or print (front = canvas edges)
+  const key = pat + colour; if (_garm.has(key)) return _garm.get(key);
+  const W = 256, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const col = '#' + new THREE.Color(colour).getHexString(), dark = 'rgba(0,0,0,0.28)', light = 'rgba(255,255,255,0.35)';
+  x.fillStyle = col; x.fillRect(0, 0, W, H);
+  if (pat === 'check') { for (let k = 0; k < W; k += 16) { x.fillStyle = dark; x.fillRect(k, 0, 5, H); x.fillRect(0, k, W, 5); x.fillStyle = light; x.fillRect(k + 9, 0, 1, H); x.fillRect(0, k + 9, W, 1); } }
+  else if (pat === 'stripe') { for (let k = 0; k < W; k += 10) { x.fillStyle = dark; x.fillRect(k, 0, 3, H); } }
+  else if (pat === 'banian') { x.fillStyle = '#f4f4f0'; x.fillRect(0, 0, W, H); for (let k = 0; k < W; k += 3) { x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(k, 0, 1, H); } }
+  else if (pat === 'knit') { for (let j = 0; j < H; j += 6) for (let i = 0; i < W; i += 6) { x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(i + (j % 12 ? 3 : 0), j, 3, 3); } }
+  for (let k = 0; k < 2000; k++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; x.fillRect(Math.random() * W, Math.random() * H, 1, 1); }
+  for (const ox of [0, W]) {                                    // front details centred on u = 0
+    if (pat === 'formal' || pat === 'check' || pat === 'stripe') { x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(ox - 6, 0, 12, H); x.fillStyle = '#f4f4f4'; for (let yy = 30; yy < H; yy += 34) { x.beginPath(); x.arc(ox, yy, 3, 0, 7); x.fill(); } }
+    if (pat === 'graphic') { x.fillStyle = 'rgba(15,15,15,0.85)'; x.fillRect(ox - 34, 60, 68, 54); x.fillStyle = '#ffcc33'; x.fillRect(ox - 26, 70, 52, 8); x.fillStyle = '#ff5a5a'; x.fillRect(ox - 26, 84, 34, 8); x.fillStyle = '#fff'; x.fillRect(ox - 26, 98, 44, 6); }
+    if (pat === 'banian') { x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.ellipse(ox, 0, 34, 40, 0, 0, Math.PI); x.fill(); }
+  }
+  if (pat !== 'banian') { x.fillStyle = 'rgba(0,0,0,0.22)'; x.fillRect(0, 0, W, 10); }     // collar band
+  x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(0, H - 8, W, 8);                              // hem
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; _garm.set(key, t); return t;
+}
 const KURTI = [[0x1f1f22, 0xb5462e, 0xe9c9a0], [0x7b1e3a, 0xd4af37, 0xf3e3c3], [0x1d4e89, 0xe6e6e6, 0xd4af37], [0x2e6b4f, 0xf2d16b, 0xc0392b], [0xf1e4cc, 0xb03a2e, 0x1d4e89], [0xd35400, 0x1b2631, 0xf7dc6f], [0x5b2c6f, 0xf5cba7, 0xd4af37]];
 const _kurtiTex = [];
 function kurtiTex(i) {   // printed kurti: base fabric, scattered flower motifs, embroidered yoke at the front, patterned hem border
@@ -197,6 +217,21 @@ export class RealHumans {
           const pm = new THREE.Matrix4().compose(new THREE.Vector3(ch.x + 0.02 * u, ch.y - 0.16 * u, ch.z + 0.12 * u), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.08, 0, 0.62)), new THREE.Vector3(1, 1, 1));
           attach.pallu = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: pg, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', pm) };
         }
+        if (gender === 'man' && ch) {
+          // street clothes over the model's suit: shirt / T-shirt / banian shell, folded lungi, head towel, backpack
+          const ra = P('RightArm') || sh, nk = P('Neck') || ch, sw = Math.abs(ra.x - hp.x) || 0.18 * u;
+          const y0 = hp.y - 0.06 * u, y1 = nk.y - 0.015 * u, hh = y1 - y0;
+          const prof = [[0.86, 0], [0.88, 0.3], [0.95, 0.6], [1.0, 0.8], [0.93, 0.9], [0.62, 0.97], [0.4, 1]].map(([r, t]) => new THREE.Vector2(r * sw, t * hh - hh / 2));
+          const sg = new THREE.LatheGeometry(prof, 30); sg.scale(1, 1, 0.8);
+          attach.shirt = { bone: bones.Spine1 ? 'Spine1' : 'Spine', geo: sg, m: local(bones.Spine1 ? 'Spine1' : 'Spine', new THREE.Matrix4().makeTranslation(hp.x, y0 + hh / 2, hp.z + 0.01 * u)), garment: true };
+          const kn = (P('LeftLeg') || ft).y + 0.02 * u, top2 = hp.y + 0.08 * u, h2 = top2 - kn;
+          attach.wrapShort = { bone: 'Hips', geo: new THREE.CylinderGeometry(0.17 * u, 0.27 * u, h2, 22, 1, true), m: local('Hips', new THREE.Matrix4().makeTranslation(hp.x, kn + h2 / 2, hp.z)) };
+          const hd = P('Head'), ht = P('HeadTop_End') || hd.clone().add(new THREE.Vector3(0, 0.2 * u, 0)), hr = (ht.y - hd.y) * 0.55;
+          const tw = new THREE.TorusGeometry(hr * 0.92, hr * 0.2, 8, 24); tw.rotateX(Math.PI / 2); tw.scale(1, 1, 1.12);
+          attach.headTowel = { bone: 'Head', geo: tw, m: local('Head', new THREE.Matrix4().compose(new THREE.Vector3(hd.x, hd.y + hr * 0.95, hd.z - hr * 0.08), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.18, 0, 0)), new THREE.Vector3(1, 1, 1))) };
+          const bp = new THREE.BoxGeometry(0.3 * u, 0.4 * u, 0.13 * u);
+          attach.backpack = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: bp, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', new THREE.Matrix4().makeTranslation(ch.x, ch.y - 0.06 * u, ch.z - 0.19 * u)), solid: 0x263238 };
+        }
         if (gender === 'woman' && ch) {
           const kTop = ch.y + 0.06 * u, kBot = hp.y - 0.42 * u, kh = kTop - kBot;
           const prof = [[0.205, 0], [0.175, 0.3], [0.15, 0.55], [0.128, 0.72], [0.13, 0.86], [0.118, 1]].map(([r, t]) => new THREE.Vector2(r * u, t * kh - kh / 2));
@@ -237,7 +272,7 @@ export class RealHumans {
       if (!bones[A.bone]) continue;
       const mat = A.metal ? new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 0.9 })
         : A.solid != null ? new THREE.MeshStandardMaterial({ color: A.solid, roughness: 0.6, side: THREE.DoubleSide })
-        : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: A.kurti ? null : CLOTH_TEX() });
+        : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide, map: A.kurti || A.garment ? null : CLOTH_TEX() });
       const m = new THREE.Mesh(A.geo, mat);
       m.matrixAutoUpdate = false; m.matrix.copy(A.m); m.castShadow = true; m.visible = false; m.frustumCulled = false; bones[A.bone].add(m); cloth[k] = m;
     }
@@ -254,7 +289,7 @@ export class RealHumans {
       const n = o.material.name || o.name;
       if (!av.builtin) continue;   // drop-in models keep their own clothes and skin
       if (av.gender === 'woman') { tint(o.material, skinN.getHex(), 0.3); continue; }
-      if (/Skin|Body/.test(n)) tint(o.material, skinN.getHex(), 0.55);
+      if (/Skin|Body/.test(n)) tint(o.material, skinN.getHex(), 0.78);
       else if (/Outfit_Top/.test(n)) tint(o.material, L.police ? 0xc2a46b : L.shirt, L.police || L.lungi || L.dhoti ? 0.85 : 0.55);
       else if (/Outfit_Bottom/.test(n)) tint(o.material, L.police ? 0xb59a62 : L.pants, L.police ? 0.85 : 0.6);
       else if (/Headwear/.test(n)) { o.visible = !!(L.police || L.hat || (L.cap && Math.random() < 0.5)); if (o.visible) tint(o.material, L.police ? 0xb71c1c : (L.cap || L.hat), 0.85); }
@@ -266,6 +301,21 @@ export class RealHumans {
     show('wrap', wrap, L.pants); show('belt', wrap && !L.female, L.lungiStripes || L.borderColor || L.pants);
     show('border', wrap, L.border || L.borderColor || L.lungiStripes || (L.dhoti ? 0xd4ac0d : L.pants));
     show('pallu', !!(L.female && L.saree), L.shirt === L.pants ? L.pants : (L.pants));
+    if (av.gender === 'man' && av.builtin && C.shirt) {
+      // pick the garment from the person's look
+      const pat = L.vest || L.bareChest ? 'banian' : L.police ? 'plain' : L.longSleeve ? (L.shirtPat === 'check' ? 'check' : 'formal') : (L.shirtPat || 'plain');
+      const fishy = !!(L.lungi && (L.vest || L.turban));
+      C.shirt.visible = !L.police; if (C.shirt.visible) { C.shirt.material.map = garmentTex(pat, L.vest || L.bareChest ? 0xf4f4f0 : L.shirt); C.shirt.material.needsUpdate = true; }
+      const bare = false;   // the garment is printed on the whole upper body (sleeves included)
+      for (const o of av.meshes) if (/Outfit_Top/.test(o.material.name || o.name)) { if (!o.userData.map0) o.userData.map0 = o.material.map || 1; o.material.map = L.police ? (o.userData.map0 === 1 ? null : o.userData.map0) : garmentTex(pat, pat === 'banian' ? 0xf4f4f0 : L.shirt); o.material.needsUpdate = true; }
+      for (const o of av.meshes) if (/Outfit_Top/.test(o.material.name || o.name)) o.material.color.copy(L.police ? new THREE.Color(0xc2a46b) : !bare ? new THREE.Color(0xffffff) : bare ? new THREE.Color(L.skin || 0x8d5524).lerp(new THREE.Color(1, 1, 1), 0.15) : new THREE.Color(L.police ? 0xc2a46b : (L.vest ? 0xf4f4f0 : L.shirt)));
+      if (fishy) { show('wrap', false); show('border', false); show('belt', false); show('wrapShort', true, L.pants); }
+      else show('wrapShort', false);
+      show('headTowel', !!(L.turban || fishy), typeof L.turban === 'number' ? L.turban : 0xf4e04d);
+      show('backpack', !!L.backpack, typeof L.backpack === 'number' ? L.backpack : 0x263238);
+      if (!wrap && !fishy) for (const o of av.meshes) if (/Outfit_Bottom/.test(o.material.name || o.name)) o.material.color.copy(new THREE.Color(L.pants || 0x2c4a7a).lerp(new THREE.Color(1, 1, 1), 0.08));
+      for (const o of av.meshes) if (/Footwear/.test(o.material.name || o.name)) o.material.color.setHex(fishy ? 0x3a2a1e : 0xffffff);   // rubber chappals for fishermen
+    }
     if (av.gender === 'woman' && av.builtin) {
       const kurti = !(L.saree);
       if (C.kurti) { C.kurti.visible = kurti; if (kurti) { C.kurti.material.map = kurtiTex(L._kurti ??= Math.floor(Math.random() * KURTI.length)); C.kurti.material.color.setHex(0xffffff); C.kurti.material.needsUpdate = true; } }
