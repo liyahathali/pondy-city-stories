@@ -6,6 +6,7 @@ import { makeHuman } from './models.js';
 import { TEA_STALLS, SEA_X } from './config.js';
 
 const rng = seeded(99);
+const CAFE_DOOR_Z = -65;   // the beach café's main door opens straight off the promenade
 const STEP_Z = [-400, -350, -300, -265, -230, -195, -120, -50, -20, 0, 30, 110, 140, 175, 250, 280]; // openings in the sea wall with steps down to the beach (every 30-50 m)
 const WHITE = () => mat(0xf6f3ec, { roughness: 0.7 });
 const STONE = () => mat(0xb9ad97, { roughness: 0.95 });
@@ -104,7 +105,7 @@ export function buildLandmarks(w) {
       col.add(cx - (along ? 0.3 : len / 2), cz - (along ? len / 2 : 0.3), cx + (along ? 0.3 : len / 2), cz + (along ? len / 2 : 0.3), 1.0, 'rail');
     };
     // the sea wall has openings with steps down to the beach
-    const cuts = [...STEP_Z.map((sz) => [sz - 1.8, sz + 1.8]), [PZ0, PZ1]].sort((p1, p2) => p1[0] - p2[0]);
+    const cuts = [...STEP_Z.map((sz) => [sz - 1.8, sz + 1.8]), [PZ0, PZ1], [CAFE_DOOR_Z - 1.9, CAFE_DOOR_Z + 1.9]].sort((p1, p2) => p1[0] - p2[0]);
     let zs = -452;
     for (const [c0, c1] of cuts) { if (c0 - zs > 0.5) wallSeg(513.2, zs, 513.2, c0); zs = c1; }
     if (302 - zs > 0.5) wallSeg(513.2, zs, 513.2, 302);
@@ -123,7 +124,7 @@ export function buildLandmarks(w) {
     }
     // benches facing the sea
     for (let z = -440; z < 295; z += 22) {
-      if ((z > PZ0 - 6 && z < PZ1 + 6) || Math.abs(z + 300) < 8) continue;
+      if ((z > PZ0 - 6 && z < PZ1 + 6) || Math.abs(z + 300) < 8 || Math.abs(z - CAFE_DOOR_Z) < 4) continue;
       boxMesh(g, 0.6, 0.12, 2.2, mat(0x8d6e63), 511.4, 0.5, z); boxMesh(g, 0.12, 0.5, 2.2, mat(0x8d6e63), 511.8, 0.8, z);
       for (const o of [-0.9, 0.9]) boxMesh(g, 0.5, 0.45, 0.12, STONE(), 511.4, 0.22, z + o);
       col.addC(511.5, z, 0.8, 2.2, 0.9, 'bench');

@@ -171,7 +171,7 @@ export function buildPier(w) {
   const bould = new THREE.DodecahedronGeometry(1, 1); { const p = bould.attributes.position; for (let i = 0; i < p.count; i++) { const s = 1 + Math.sin(p.getX(i) * 5.1 + p.getZ(i) * 3.3) * 0.18; p.setXYZ(i, p.getX(i) * s, p.getY(i) * 0.7 * s, p.getZ(i) * s); } bould.computeVertexNormals(); }
   const bM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
   const spots = [];
-  for (let z = PZ - 70; z < PZ - 6; z += 1.4) for (let x = 512; x < 519 + (PZ - 6 - z) * 0.06; x += 1.6) if (rng() > 0.1 && !(x > 512.5 && z > -87 && z < -57)) spots.push([x + rng.range(-0.4, 0.4), z + rng.range(-0.4, 0.4)]);
+  for (let z = PZ - 70; z < PZ - 6; z += 1.4) for (let x = 512; x < 519 + (PZ - 6 - z) * 0.06; x += 1.6) if (rng() > 0.1 && !(x > 510 && z > -88 && z < -56)) spots.push([x + rng.range(-0.4, 0.4), z + rng.range(-0.4, 0.4)]);
   const im = new THREE.InstancedMesh(bould, bM, spots.length), mx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), cc = new THREE.Color();
   spots.forEach(([x, z], i) => { const s = rng.range(0.7, 1.4); e.set(rng() * 3, rng() * 3, rng() * 3); q.setFromEuler(e); mx.compose(new THREE.Vector3(x, 0.25 - (x - 512) * 0.05, z), q, new THREE.Vector3(s * 1.2, s, s)); im.setMatrixAt(i, mx); im.setColorAt(i, cc.setHSL(0.6, 0.04, rng.range(0.1, 0.2))); });
   im.castShadow = im.receiveShadow = true; scene.add(im);

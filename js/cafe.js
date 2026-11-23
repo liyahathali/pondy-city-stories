@@ -139,6 +139,13 @@ export function buildCafe(w) {
   const umb = (x, y, z, c) => { put(g, new THREE.CylinderGeometry(0.03, 0.03, 2.3, 6), metalM, x, y + 1.15, z); put(g, new THREE.ConeGeometry(1.4, 0.55, 8, 1, true), M(c, { side: THREE.DoubleSide, roughness: 0.9 }), x, y + 2.35, z); };
   for (const [x, z, c] of [[-5, -9, 0xe8e2d0], [-5, 9, 0xd2452f], [-1.5, 9.5, 0xe8e2d0], [-5.5, 0, 0xd2452f]]) { umb(x, RY, z, c); terraceTable(g, x, RY, z, woodM, orangeM); }
   umb(3, RY2, -1, 0xe8e2d0); terraceTable(g, 3, RY2, -1, woodM, orangeM);
+  // entrance: paved threshold through the sea-wall gap, coir doormat, open teak door leaves, ENTRANCE sign
+  { const dz = wx(20);
+    put(g, B(2.6, 0.1, 3.4), M(0xcfc8ba, { roughness: 0.9 }), FX - 1.25, 0.06, dz);
+    put(g, B(1.0, 0.02, 1.6), M(0x8a6a3a, { roughness: 1 }), FX - 0.7, 0.12, dz);
+    for (const sd of [-1, 1]) { const d = put(g, B(0.06, 2.6, 1.25), shutterM, FX + 0.55, 1.3, dz + sd * 1.25, sd * 1.25); d.position.x += 0.1; }
+    const enT = textTexture('ENTRANCE  →  CAFÉ', { w: 512, h: 96, bg: '#2a2420', fg: '#ffd36b', font: 'bold 46px Georgia' });
+    put(g, new THREE.PlaneGeometry(2.2, 0.42), M(0xffffff, { map: enT }), FX - 0.2, 3.05, dz, -Math.PI / 2); }
   // potted plants along the facade, menu board, notice board, round blue lounge sign
   for (const z of [-11, -6.5, -3.3, 0.2, 3.4, 9.3, 12]) { put(g, new THREE.CylinderGeometry(0.28, 0.2, 0.45, 10), potM, FX - 0.65, 0.22, z); const l = put(g, new THREE.IcosahedronGeometry(0.42, 1), leafM, FX - 0.65, 0.75, z); l.scale.set(1, 0.85, 1); }
   put(g, B(0.08, 1.2, 0.8), M(0xffffff, { map: boardTex([['Filter coffee', '40'], ['Masala tea', '30'], ['Cold coffee', '90'], ['Croissant', '70'], ['Crêpe', '120'], ['Pizza', '220']], { w: 256, h: 384, title: 'MENU' }) }), FX - 0.2, 1.65, wx(17.5), -Math.PI / 2);
