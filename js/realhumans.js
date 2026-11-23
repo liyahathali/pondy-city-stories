@@ -52,24 +52,57 @@ function restyleWoman(scene, bones) {
   }
 }
 const _garm = new Map();
+// Tropical camp-collar shirts (reference: "Le Pondichéry" rack): fixed, deterministic prints so every shirt of a design matches
+export const TROPICAL = [
+  { base: '#b51f26', inks: ['#8f8c86', '#cdc6b8', '#6d6865'], kinds: ['monstera', 'hibiscus', 'palm'], n: 46 },        // red, grey-cream leaves + hibiscus
+  { base: '#c6d9e8', inks: ['#2e5c92', '#5f8cbf', '#24466f'], kinds: ['hibiscus', 'leaf', 'palm', 'leaf'], n: 80 },      // pale blue, dense blue florals
+  { base: '#1b1b1c', inks: ['#e7dabe', '#b9a37f', '#f3ecdc'], kinds: ['monstera', 'palm', 'hibiscus'], n: 48 },          // black, cream leaves
+  { base: '#f1efea', inks: ['#6c7074', '#a3a6a9', '#4d5155'], kinds: ['palm', 'palm', 'monstera'], n: 44 },              // white, grey palm fronds
+  { base: '#79c1b6', inks: ['#e0733a', '#2f6f5e', '#efc56a', '#f3efe4'], kinds: ['monstera', 'hibiscus', 'palm', 'leaf'], n: 50 },   // teal, orange + green tropical
+];
+function drawTropical(x, W, H, d) {
+  let sd = 1337 + d.n; const r = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  x.fillStyle = d.base; x.fillRect(0, 0, W, H);
+  const palm = (L, ink) => { x.strokeStyle = ink; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 0); x.quadraticCurveTo(L * 0.5, -L * 0.12, L, 0); x.stroke(); x.fillStyle = ink;
+    for (let i = 2; i < 22; i++) { const t = i / 22, px = L * t, py = -L * 0.12 * 4 * t * (1 - t) * 0.5, ll = L * 0.36 * Math.sin(Math.PI * Math.min(1, t * 1.15)); for (const sg of [-1, 1]) { x.save(); x.translate(px, py); x.rotate(sg * (0.9 - t * 0.4)); x.beginPath(); x.ellipse(ll / 2, 0, ll / 2, 3.2, 0, 0, Math.PI * 2); x.fill(); x.restore(); } } };
+  const monstera = (R, ink) => { x.fillStyle = ink; x.beginPath(); x.ellipse(0, 0, R, R * 0.8, 0, 0, Math.PI * 2); x.fill(); x.fillStyle = d.base;
+    for (let i = 0; i < 7; i++) { const a = -Math.PI * 0.85 + i * 0.3; for (const sg of [-1, 1]) { x.save(); x.rotate(sg * a); x.beginPath(); x.moveTo(R * 0.35, 0); x.lineTo(R * 1.05, -4); x.lineTo(R * 1.05, 4); x.closePath(); x.fill(); x.restore(); } }
+    x.strokeStyle = d.base; x.lineWidth = 2; x.beginPath(); x.moveTo(-R, 0); x.lineTo(R, 0); x.stroke(); for (let i = 0; i < 3; i++) { x.beginPath(); x.arc(-R * 0.2 + i * R * 0.3, (i % 2 ? 1 : -1) * R * 0.35, R * 0.08, 0, 7); x.fillStyle = d.base; x.fill(); } };
+  const hibiscus = (R, ink, ink2) => { x.fillStyle = ink; for (let i = 0; i < 5; i++) { x.save(); x.rotate(i * Math.PI * 0.4); x.beginPath(); x.ellipse(R * 0.55, 0, R * 0.55, R * 0.42, 0, 0, Math.PI * 2); x.fill(); x.restore(); }
+    x.strokeStyle = d.base; x.lineWidth = 1.5; for (let i = 0; i < 5; i++) { x.save(); x.rotate(i * Math.PI * 0.4 + 0.3); x.beginPath(); x.moveTo(0, 0); x.lineTo(R * 0.85, 0); x.stroke(); x.restore(); }
+    x.strokeStyle = ink2; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 0); x.lineTo(R * 0.9, -R * 0.5); x.stroke(); x.fillStyle = ink2; x.beginPath(); x.arc(R * 0.9, -R * 0.5, 4, 0, 7); x.fill(); };
+  const leaf = (L, ink) => { x.fillStyle = ink; x.beginPath(); x.moveTo(0, 0); x.quadraticCurveTo(L * 0.5, -L * 0.3, L, 0); x.quadraticCurveTo(L * 0.5, L * 0.3, 0, 0); x.fill(); x.strokeStyle = d.base; x.lineWidth = 1.2; x.beginPath(); x.moveTo(0, 0); x.lineTo(L, 0); x.stroke(); };
+  for (let k = 0; k < d.n; k++) {
+    const kind = d.kinds[k % d.kinds.length], ink = d.inks[k % d.inks.length], ink2 = d.inks[(k + 1) % d.inks.length];
+    const cx = r() * W, cy = r() * H, rot = r() * Math.PI * 2, sc = d.n > 25 ? 0.42 : 0.6;
+    for (const ox of [-W, 0, W]) for (const oy of [-H, 0, H]) {   // tile seamlessly
+      const px = cx + ox, py = cy + oy; if (px < -150 || px > W + 150 || py < -150 || py > H + 150) continue;
+      x.save(); x.translate(px, py); x.rotate(rot);
+      if (kind === 'palm') palm(150 * sc, ink); else if (kind === 'monstera') monstera(55 * sc, ink); else if (kind === 'hibiscus') hibiscus(38 * sc, ink, ink2); else leaf(70 * sc, ink);
+      x.restore();
+    }
+  }
+}
 function garmentTex(pat, colour) {   // shirt / T-shirt / banian fabric with a front placket, collar band or print (front = canvas edges)
   const key = pat + colour; if (_garm.has(key)) return _garm.get(key);
-  const W = 256, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const trop = /^tropical(\d)$/.exec(pat), W = trop ? 512 : 256, H = W, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
   const col = '#' + new THREE.Color(colour).getHexString(), dark = 'rgba(0,0,0,0.28)', light = 'rgba(255,255,255,0.35)';
   x.fillStyle = col; x.fillRect(0, 0, W, H);
-  if (pat === 'check') { for (let k = 0; k < W; k += 16) { x.fillStyle = dark; x.fillRect(k, 0, 5, H); x.fillRect(0, k, W, 5); x.fillStyle = light; x.fillRect(k + 9, 0, 1, H); x.fillRect(0, k + 9, W, 1); } }
+  if (trop) drawTropical(x, W, H, TROPICAL[+trop[1]]);
+  else if (pat === 'check') { for (let k = 0; k < W; k += 16) { x.fillStyle = dark; x.fillRect(k, 0, 5, H); x.fillRect(0, k, W, 5); x.fillStyle = light; x.fillRect(k + 9, 0, 1, H); x.fillRect(0, k + 9, W, 1); } }
   else if (pat === 'stripe') { for (let k = 0; k < W; k += 10) { x.fillStyle = dark; x.fillRect(k, 0, 3, H); } }
   else if (pat === 'banian') { x.fillStyle = '#f4f4f0'; x.fillRect(0, 0, W, H); for (let k = 0; k < W; k += 3) { x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(k, 0, 1, H); } }
   else if (pat === 'knit') { for (let j = 0; j < H; j += 6) for (let i = 0; i < W; i += 6) { x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(i + (j % 12 ? 3 : 0), j, 3, 3); } }
   for (let k = 0; k < 2000; k++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'; x.fillRect(Math.random() * W, Math.random() * H, 1, 1); }
   for (const ox of [0, W]) {                                    // front details centred on u = 0
+    if (trop) { x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(ox - 7, 0, 14, H); x.fillStyle = '#efe9dc'; for (let yy = 40; yy < H; yy += 70) { x.beginPath(); x.arc(ox, yy, 5, 0, 7); x.fill(); } }   // camp-collar placket + coconut buttons
     if (pat === 'formal' || pat === 'check' || pat === 'stripe') { x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(ox - 6, 0, 12, H); x.fillStyle = '#f4f4f4'; for (let yy = 30; yy < H; yy += 34) { x.beginPath(); x.arc(ox, yy, 3, 0, 7); x.fill(); } }
     if (pat === 'graphic') { x.fillStyle = 'rgba(15,15,15,0.85)'; x.fillRect(ox - 34, 60, 68, 54); x.fillStyle = '#ffcc33'; x.fillRect(ox - 26, 70, 52, 8); x.fillStyle = '#ff5a5a'; x.fillRect(ox - 26, 84, 34, 8); x.fillStyle = '#fff'; x.fillRect(ox - 26, 98, 44, 6); }
     if (pat === 'banian') { x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.ellipse(ox, 0, 34, 40, 0, 0, Math.PI); x.fill(); }
   }
   if (pat !== 'banian') { x.fillStyle = 'rgba(0,0,0,0.22)'; x.fillRect(0, 0, W, 10); }     // collar band
   x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(0, H - 8, W, 8);                              // hem
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; _garm.set(key, t); return t;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (trop) t.wrapS = t.wrapT = THREE.RepeatWrapping; _garm.set(key, t); return t;
 }
 const KURTI = [[0x1f1f22, 0xb5462e, 0xe9c9a0], [0x7b1e3a, 0xd4af37, 0xf3e3c3], [0x1d4e89, 0xe6e6e6, 0xd4af37], [0x2e6b4f, 0xf2d16b, 0xc0392b], [0xf1e4cc, 0xb03a2e, 0x1d4e89], [0xd35400, 0x1b2631, 0xf7dc6f], [0x5b2c6f, 0xf5cba7, 0xd4af37]];
 const _kurtiTex = [];
@@ -267,6 +300,21 @@ export class RealHumans {
             const th = P(side + 'UpLeg'), kn2 = P(side + 'Leg'), an = P(side + 'Foot');
             if (th && kn2 && an) { tubeAlong(th.clone().add(new THREE.Vector3(0, 0.02 * u, 0)), kn2, 0.105 * u, 0.088 * u, side + 'UpLeg', 'baggyT' + side[0]); tubeAlong(kn2, an.clone().add(new THREE.Vector3(0, 0.01 * u, 0)), 0.088 * u, 0.098 * u, side + 'Leg', 'baggyS' + side[0]); }
           }
+          // short sleeves + camp collar for the printed holiday shirts (worn without the suit jacket)
+          for (const side of ['Left', 'Right']) {
+            const sh2 = P(side + 'Arm'), el = P(side + 'ForeArm');
+            if (sh2 && el) { tubeAlong(sh2.clone().lerp(el, -0.08), sh2.clone().lerp(el, 0.5), 0.085 * u, 0.079 * u, side + 'Arm', 'sleeve' + side[0]); Object.assign(attach['sleeve' + side[0]], { baggy: false, garment: true }); const uvs = attach['sleeve' + side[0]].geo.attributes.uv; for (let i = 0; i < uvs.count; i++) uvs.setXY(i, uvs.getX(i) * 0.45, uvs.getY(i) * 0.3); }
+          }
+          for (const side of ['Left', 'Right']) {     // bare arms below the short sleeve (the base body has none under its jacket)
+            const sh2 = P(side + 'Arm'), el = P(side + 'ForeArm'), wr = P(side + 'Hand');
+            if (sh2 && el && wr) {
+              tubeAlong(sh2.clone().lerp(el, 0.35), el.clone().lerp(wr, -0.02), 0.046 * u, 0.038 * u, side + 'Arm', 'armU' + side[0]);
+              tubeAlong(el.clone().lerp(wr, 0.02), wr.clone().lerp(el, 0.04), 0.037 * u, 0.028 * u, side + 'ForeArm', 'armF' + side[0]);
+              for (const k of ['armU', 'armF']) { const A2 = attach[k + side[0]]; A2.baggy = false; A2.solid = 0xffffff; A2.skin = true; const pz = A2.geo.attributes.position; for (let i = 0; i < pz.count; i++) { const yy = pz.getY(i); pz.setX(i, pz.getX(i) / (1 + 0.06 * Math.sin(yy * 9 / (A2.geo.parameters.height / 1.22)))); } A2.geo.computeVertexNormals(); }
+            }
+          }
+          { const cg = new THREE.TorusGeometry(0.075 * u, 0.022 * u, 6, 20, Math.PI * 1.6); cg.rotateX(Math.PI / 2); cg.rotateY(Math.PI * 0.7); cg.scale(1, 1, 0.9);
+            attach.collar = { bone: bones.Neck ? 'Neck' : 'Spine2', geo: cg, m: local(bones.Neck ? 'Neck' : 'Spine2', new THREE.Matrix4().makeTranslation(nk.x, nk.y - 0.005 * u, nk.z + 0.005 * u)), garment: true }; }
           const bp = new THREE.BoxGeometry(0.3 * u, 0.4 * u, 0.13 * u);
           attach.backpack = { bone: bones.Spine2 ? 'Spine2' : 'Spine1', geo: bp, m: local(bones.Spine2 ? 'Spine2' : 'Spine1', new THREE.Matrix4().makeTranslation(ch.x, ch.y - 0.06 * u, ch.z - 0.19 * u)), solid: 0x263238 };
         }
@@ -340,23 +388,30 @@ export class RealHumans {
       else if (/Beard/.test(n)) o.visible = false;   // replaced by an Indian-style moustache
     }
     // traditional wear on the realistic bodies, from the person's outfit
-    const C = av.cloth || {}, show = (k, v, col) => { if (C[k]) { C[k].visible = v; if (v && col != null) C[k].material.color.setHex(col); } };
+    const C = av.cloth || {}, show = (k, v, col) => { if (C[k]) { C[k].visible = !!v; if (v && col != null) C[k].material.color.setHex(col); } };
     const wrap = L.female ? !!L.saree : !!(L.lungi || L.dhoti);
     show('wrap', wrap, L.pants); show('belt', wrap && !L.female, L.lungiStripes || L.borderColor || L.pants);
     show('border', wrap, L.border || L.borderColor || L.lungiStripes || (L.dhoti ? 0xd4ac0d : L.pants));
     show('pallu', !!(L.female && L.saree), L.shirt === L.pants ? L.pants : (L.pants));
     if (av.gender === 'man' && av.builtin && C.shirt) {
       // pick the garment from the person's look
-      const pat = L.vest || L.bareChest ? 'banian' : L.police ? 'plain' : L.longSleeve ? (L.shirtPat === 'check' ? 'check' : 'formal') : (L.shirtPat || 'plain');
+      if (L.tropical === undefined) L.tropical = (!L.police && !L.vest && !L.bareChest && !L.old && !L.fisher && Math.random() < (L.college || L.tourist ? 0.45 : 0.3)) ? Math.floor(Math.random() * TROPICAL.length) : -1;
+      const pat = L.tropical >= 0 && !L.police && !L.vest && !L.bareChest ? 'tropical' + L.tropical : L.vest || L.bareChest ? 'banian' : L.police ? 'plain' : L.longSleeve ? (L.shirtPat === 'check' ? 'check' : 'formal') : (L.shirtPat || 'plain');
       const fishy = !!(L.lungi && (L.vest || L.turban));
       C.shirt.visible = !L.police; if (C.shirt.visible) { C.shirt.material.map = garmentTex(pat, L.vest || L.bareChest ? 0xf4f4f0 : L.shirt); C.shirt.material.needsUpdate = true; }
       const bare = false;   // the garment is printed on the whole upper body (sleeves included)
       for (const o of av.meshes) if (/Outfit_Top/.test(o.material.name || o.name)) { if (!o.userData.map0) o.userData.map0 = o.material.map || 1; o.material.map = L.police ? (o.userData.map0 === 1 ? null : o.userData.map0) : garmentTex(pat, pat === 'banian' ? 0xf4f4f0 : L.shirt); o.material.needsUpdate = true; }
+      const holiday = pat.startsWith('tropical');
+      for (const o of av.meshes) if (/Outfit_Top/.test(o.material.name || o.name)) o.visible = !holiday;
+      const skinC = av.meshes.find((o) => /Body/.test(o.material.name || o.name))?.material.color;
+      for (const k of ['armUL', 'armUR', 'armFL', 'armFR']) if (C[k]) { C[k].visible = holiday; C[k].material.color.set(L.skin || 0x8d5524).multiplyScalar(0.92); C[k].material.roughness = 0.55; C[k].material.side = THREE.FrontSide; }
+      if (holiday) { for (const k of ['shirt', 'sleeveL', 'sleeveR', 'collar']) if (C[k]) { C[k].visible = true; C[k].material.map = garmentTex(pat, 0xffffff); C[k].material.color.setHex(0xffffff); C[k].material.needsUpdate = true; } }
+      else for (const k of ['sleeveL', 'sleeveR', 'collar']) show(k, false);
       for (const o of av.meshes) if (/Outfit_Top/.test(o.material.name || o.name)) o.material.color.copy(L.police ? new THREE.Color(0xc2a46b) : !bare ? new THREE.Color(0xffffff) : bare ? new THREE.Color(L.skin || 0x8d5524).lerp(new THREE.Color(1, 1, 1), 0.15) : new THREE.Color(L.police ? 0xc2a46b : (L.vest ? 0xf4f4f0 : L.shirt)));
       if (fishy) { show('wrap', false); show('border', false); show('belt', false); show('wrapShort', true, L.pants); }
       else show('wrapShort', false);
       show('headTowel', !!(L.turban || fishy), typeof L.turban === 'number' ? L.turban : 0xf4e04d);
-      const baggy = !wrap && !fishy && !L.police && (L.college || L.ripped || L.baggy || (L.youth && Math.random() < 0.6));
+      const baggy = !!(!wrap && !fishy && !L.police) && !!(L.college || L.ripped || L.baggy || (L.youth && Math.random() < 0.6));
       const pc = L.baggyCol ??= (Math.random() < 0.65 ? (L.pants || 0x2c4a7a) : [0x5d6b3a, 0x8a7a5a, 0x2b2b2b, 0x4a5a6a][Math.floor(Math.random() * 4)]);
       for (const k of ['baggyTL', 'baggyTR', 'baggySL', 'baggySR']) show(k, baggy, pc);
       show('backpack', !!L.backpack, typeof L.backpack === 'number' ? L.backpack : 0x263238);

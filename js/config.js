@@ -106,11 +106,12 @@ export const POI = {
   villianur: { x: -1150, z: -110 },
   bakery: { x: 434, z: -40 },
   rockBeach: { x: 512, z: -250 },
+  oldPier: { x: 520, z: -40 },
   promenade: { x: 508, z: 100 },
 };
 
 export const MAP_LABELS = [
-  ['White Town', 380, -330], ['Rock Beach', 560, -260], ['Promenade', 560, 120],
+  ['White Town', 380, -330], ['Rock Beach', 560, -260], ['Old Pier', 620, -52], ['Promenade', 560, 120],
   ['Bharathi Park', 385, -185], ['Tamil Quarter', -120, -250], ['Grand Canal', 235, -420],
   ['Bus Stand', -360, -150], ['Railway Station', 190, 345], ['Botanical Garden', -70, 455],
   ['Villianur', -1150, -170], ['Paradise Beach', 545, 1380], ['MG Road', 10, -470], ['Mission St', 170, -470],
