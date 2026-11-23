@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mat, boxMesh, sharedBox, bake, pick } from './utils.js';
 import { HUMAN_CELLS } from './textures.js';
+import { buildFlyCar } from './flycar.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /* =================================================================== */
@@ -405,13 +406,14 @@ export const CAR_COLORS = [0xd0d3d4, 0xffffff, 0xc0392b, 0x1f3a93, 0x7f8c8d, 0x1
 export function makeVehicleModel(type, color) {
   const g = new THREE.Group();
   const body = new THREE.Group(); g.add(body);
-  const isCar = type === 'car' || type === 'police' || type === 'taxi';
+  const isCar = type === 'car' || type === 'police' || type === 'taxi' || type === 'flycar';
   const paint = isCar ? new THREE.MeshPhysicalMaterial({ color, roughness: 0.32, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.3 })
     : new THREE.MeshStandardMaterial({ color, roughness: 0.28, metalness: 0.45 });
   paint.userData.noMerge = true; // glossy clear-coat paint reflects the sky
   const out = { group: g, body, wheels: [], steerWheels: [], seat: { x: 0, y: 0.5, z: 0 }, riderVisible: false, sirens: [], paint, lean: null };
   const B = (w, h, d, m, x, y, z) => boxMesh(body, w, h, d, m, x, y, z);
   const C2 = (m, r, len, x, y, z) => { const o = new THREE.Mesh(_cylG, m); o.scale.set(r, len, r); o.rotation.x = Math.PI / 2; o.position.set(x, y, z); body.add(o); return o; };
+  if (type === 'flycar') return buildFlyCar(out, body, g, paint);
 
   if (type === 'car' || type === 'police' || type === 'taxi') {
     buildCar(type, out, body, g, paint, B);

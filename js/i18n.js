@@ -41,7 +41,7 @@ const EN = {
   'mo.walkAayi': 'Get off your vehicle and walk to the ~y~Aayi Mandapam~w~.', 'mo.backAuto': 'Get back in the ~y~auto~w~!', 'mo.stop': 'Stop to let the passenger in!',
   'mo.onboard': 'Passenger on board!', 'mo.backVeh': 'Get back in your vehicle!', 'mo.cp': 'Checkpoint {0}/{1}',
   // ---- vehicles ----
-  'v.car': 'Hatchback', 'v.taxi': 'Yellow Taxi', 'v.police': 'Police Car', 'v.auto': 'Auto Rickshaw', 'v.motorcycle': 'Motorcycle', 'v.scooter': 'Scooter', 'v.bus': 'PRTC Bus', 'v.cycle': 'Bicycle', 'v.moped': 'Moped 50', 'v.twostroke': '2-Stroke 100', 'v.vintage': 'Classic Scooter', 'v.commuter': 'Commuter 100', 'v.retro80': '80s Retro Scooter',
+  'v.car': 'Hatchback', 'v.taxi': 'Yellow Taxi', 'v.police': 'Police Car', 'v.auto': 'Auto Rickshaw', 'v.motorcycle': 'Motorcycle', 'v.scooter': 'Scooter', 'v.bus': 'PRTC Bus', 'v.cycle': 'Bicycle', 'v.moped': 'Moped 50', 'v.twostroke': '2-Stroke 100', 'v.vintage': 'Classic Scooter', 'v.commuter': 'Commuter 100', 'v.retro80': '80s Retro Scooter', 'v.flycar': 'Nova Sky (flying EV)',
 };
 
 const TA = {
@@ -80,7 +80,7 @@ const TA = {
   'mpass': 'பணி வெற்றி!', 'mfail': 'பணி தோல்வி!', 'mf.vehicle': 'வாகனம் அழிந்துவிட்டது.', 'mf.time': 'நேரம் முடிந்தது!',
   'mo.walkAayi': 'வாகனத்திலிருந்து இறங்கி ~y~ஆயி மண்டபத்திற்கு~w~ நடந்து செல்லுங்கள்.', 'mo.backAuto': 'மீண்டும் ~y~ஆட்டோவில்~w~ ஏறுங்கள்!', 'mo.stop': 'பயணி ஏற நிறுத்துங்கள்!',
   'mo.onboard': 'பயணி ஏறிவிட்டார்!', 'mo.backVeh': 'மீண்டும் உங்கள் வாகனத்தில் ஏறுங்கள்!', 'mo.cp': 'சோதனைச் சாவடி {0}/{1}',
-  'v.car': 'கார்', 'v.taxi': 'மஞ்சள் டாக்ஸி', 'v.police': 'காவல் வாகனம்', 'v.auto': 'ஆட்டோ ரிக்ஷா', 'v.motorcycle': 'மோட்டார் சைக்கிள்', 'v.scooter': 'ஸ்கூட்டர்', 'v.bus': 'PRTC பேருந்து', 'v.cycle': 'சைக்கிள்', 'v.moped': 'மொபெட் 50', 'v.twostroke': '2-ஸ்ட்ரோக் 100', 'v.vintage': 'கிளாசிக் ஸ்கூட்டர்', 'v.commuter': 'கம்யூட்டர் 100', 'v.retro80': '80s ரெட்ரோ ஸ்கூட்டர்',
+  'v.car': 'கார்', 'v.taxi': 'மஞ்சள் டாக்ஸி', 'v.police': 'காவல் வாகனம்', 'v.auto': 'ஆட்டோ ரிக்ஷா', 'v.motorcycle': 'மோட்டார் சைக்கிள்', 'v.scooter': 'ஸ்கூட்டர்', 'v.bus': 'PRTC பேருந்து', 'v.cycle': 'சைக்கிள்', 'v.moped': 'மொபெட் 50', 'v.twostroke': '2-ஸ்ட்ரோக் 100', 'v.vintage': 'கிளாசிக் ஸ்கூட்டர்', 'v.commuter': 'கம்யூட்டர் 100', 'v.retro80': '80s ரெட்ரோ ஸ்கூட்டர்', 'v.flycar': 'நோவா ஸ்கை (பறக்கும் கார்)',
 };
 
 // Place names (districts / map labels)

@@ -25,6 +25,7 @@ const ALL_PROXY = ['Spine', 'Head', 'LeftArm', 'LeftForeArm', 'RightArm', 'Right
 const CHILD = { Spine: 'Spine1', Head: 'HeadTop_End', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand', RightArm: 'RightForeArm', RightForeArm: 'RightHand',
   LeftUpLeg: 'LeftLeg', LeftLeg: 'LeftFoot', RightUpLeg: 'RightLeg', RightLeg: 'RightFoot' };
 const strip = (n) => n.replace(/^mixamorig:?/, '');
+const FINGER = /Hand(Thumb|Index|Middle|Ring|Pinky)\d/;
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 /* ---- restyle the built-in female model: denim jeans, black hair tied back (no puffs / headphones) ---- */
@@ -251,6 +252,8 @@ export class RealHumans {
         idle: retarget(anims.scene, A('idle'), scene, 'idle'), walk: retarget(anims.scene, A('walk'), scene, 'walk'),
         run: retarget(anims.scene, A('run'), scene, 'run'), agree: retarget(anims.scene, A('agree'), scene, 'agree'), shake: retarget(anims.scene, A('headShake'), scene, 'shake'), dance: scene === woman.scene ? onlyRot(samba, 'dance') : retarget(woman.scene, samba, scene, 'dance'),
       };
+      // the mocap rig's fingers are clenched into fists: drop finger tracks so hands keep a relaxed open pose (set in make)
+      for (const c of Object.values(clips)) if (c) c.tracks = c.tracks.filter((tr) => !FINGER.test(tr.name));
       scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; if (/Teeth/i.test(o.name)) o.visible = false; } });
       // short black hair cap glued to the Head bone (the man's own hair belongs to his hat mesh)
       let hairLocal = null;
@@ -348,6 +351,13 @@ export class RealHumans {
     const meshes = []; model.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); meshes.push(o); } });
     const bones = {}; model.traverse((o) => { if (o.isBone) bones[strip(o.name)] = o; });
     const restLocal = new Map(); model.traverse((o) => { if (o.isBone) restLocal.set(o, o.quaternion.clone()); });
+    // relaxed human hands: fingers gently curled, each joint a little more than the last, thumb slightly in
+    const curl = 0.16 + Math.random() * 0.08, ax = new THREE.Vector3(1, 0, 0), qc = new THREE.Quaternion();
+    for (const [b, q] of restLocal) {
+      const m = /Hand(Thumb|Index|Middle|Ring|Pinky)([123])$/.exec(strip(b.name)); if (!m) continue;
+      const j = +m[2], k = m[1] === 'Thumb' ? curl * 0.5 : curl * (1 + j * 0.25) * (m[1] === 'Pinky' ? 1.25 : m[1] === 'Ring' ? 1.12 : 1);
+      q.multiply(qc.setFromAxisAngle(ax, k)); b.quaternion.copy(q);
+    }
     let hair = null;
     if (T.hairLocal) {
       hair = new THREE.Mesh(HAIR_GEO, new THREE.MeshStandardMaterial({ color: 0x141210, roughness: 0.75 }));

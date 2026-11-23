@@ -176,7 +176,8 @@ export function buildCafe(w) {
   // keep the rocks and boulders out of the café footprint (they were laid before it)
   w.cafeSeats = seats;
   w.shops.push({ type: 'coffee', x: CAFE.x + 1.5, z: CAFE.z + NZ + 2.6, yaw: 0, vendor: { x: CAFE.x + 0.5, z: CAFE.z + NZ + 0.85, yaw: 0 }, front: { x: CAFE.x + 1.5, z: CAFE.z + NZ + 2.6 } });
-  w.cafeStaff = [{ x: CAFE.x - 3.2, z: CAFE.z + 5.2, yaw: Math.PI / 2 }];
+  w.cafeStaff = [];
+  w.cafeTableSpots = tables.map(([tx, tz]) => ({ x: CAFE.x + tx, z: CAFE.z + tz }));
   buildBeachVendors(w);
   return g;
 }
@@ -263,6 +264,12 @@ function buildBeachVendors(w) {
   }
 }
 
+/** Waiter loop: counter -> aisle -> stop beside a table (serve) -> back along the aisle -> counter. */
+export function waiterRoute(w) {
+  const cz = CAFE.z - 10.4, cx = CAFE.x + 1.5, t = w.cafeTableSpots[Math.floor(Math.random() * w.cafeTableSpots.length)], ax = t.x + 1.95;
+  return [{ x: cx, z: cz, stop: 2.5 + Math.random() * 2, yaw: Math.PI }, { x: ax, z: cz }, { x: ax, z: t.z, stop: 3 + Math.random() * 3, yaw: -Math.PI / 2 }, { x: ax, z: cz }];
+}
+
 /* ---------------- props for roaming vendors (carried with the person, kept visible over the realistic body) ---------------- */
 export function vendorProp(h, kind) {
   const g = new THREE.Group(); g.userData.prop = true; h.root.add(g);
@@ -280,6 +287,9 @@ export function vendorProp(h, kind) {
     tag(put(g, new THREE.CylinderGeometry(0.018, 0.022, 2.2, 5), M(0x6b4a2c), 0.15, 1.55, -0.3, 0, -0.95, 0));
     const pink = M(0xff8fc8, { roughness: 0.4, transparent: true, opacity: 0.88 });
     for (let i = 0; i < 18; i++) { const b = tag(put(g, new THREE.ConeGeometry(0.11, 0.3, 7), pink, 0.15 + (rng() - 0.5) * 0.45, 2.2 + (rng() - 0.5) * 0.5, -1.15 + (rng() - 0.5) * 0.45, 0, Math.PI + (rng() - 0.5), (rng() - 0.5))); b.scale.set(1, 1, 0.8); }
+  } else if (kind === 'tray') {   // waiter's round steel tray with coffee tumblers, held at chest height
+    tag(put(g, new THREE.CylinderGeometry(0.22, 0.22, 0.02, 20), M(0xc9ccd0, { metalness: 0.8, roughness: 0.25 }), 0.22, 1.12, 0.28));
+    for (let i = 0; i < 3; i++) tag(put(g, new THREE.CylinderGeometry(0.035, 0.03, 0.09, 10), M(0xd9dcdf, { metalness: 0.8, roughness: 0.3 }), 0.17 + (i % 2) * 0.1, 1.18, 0.22 + i * 0.06));
   } else if (kind === 'drums') {
     const drumM = M(0xffffff, { map: canvasTex(64, 64, (x) => { x.fillStyle = '#b5452d'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#e8d3a6'; x.fillRect(0, 0, 64, 8); x.fillRect(0, 56, 64, 8); x.strokeStyle = '#f2e6cc'; x.lineWidth = 2; for (let i = 0; i < 64; i += 8) { x.beginPath(); x.moveTo(i, 8); x.lineTo(i + 8, 56); x.stroke(); } }, false), roughness: 0.8 });
     const skin = M(0xe2cfa0, { roughness: 0.9 });

@@ -39,6 +39,7 @@ const PARKED = [
   ['auto', -350, -150, Math.PI], ['bus', -372, -175, Math.PI / 2], ['bus', -372, -160, Math.PI / 2], ['bus', -372, -143, Math.PI / 2],
   ['police', 152, -100, Math.PI], ['police', 152, -60, Math.PI], ['taxi', 200, 305, Math.PI / 2], ['motorcycle', -1096.5, -70, Math.PI],
   ['car', 490, 1255, -Math.PI / 2], ['scooter', 424, -30, 0], ['cycle', 495, -126, Math.PI], ['cycle', 426, -60, 0], ['auto', 176, 30, 0], ['car', -145.5, -230, 0], ['scooter', 15.5, 140, Math.PI],
+  ['flycar', 495, -142, Math.PI], ['flycar', 424, -48, 0],
   ['twostroke', 495, -112, Math.PI], ['vintage', 495, -104, Math.PI], ['retro80', 424, -36, 0], ['commuter', 426, -66, 0], ['moped', 495, -130, Math.PI],
 ];
 
@@ -102,14 +103,14 @@ class Game {
     if (G.settings.pixel === undefined) G.settings.pixel = true;
     if (G.settings.realChars === undefined) G.settings.realChars = true;
     if (G.animals) G.animals.cap = q === 'high' ? 14 : q === 'medium' ? 10 : 6;
-    if (G.real) G.real.limit = q === 'high' ? 24 : q === 'medium' ? 14 : 8;
+    if (G.real) G.real.limit = q === 'high' ? 30 : q === 'medium' ? 18 : 10;
     if (G.isTouch) { if (G.real) G.real.limit = Math.min(G.real.limit, 5); if (G.animals) G.animals.cap = Math.min(G.animals.cap, 6); }
     setPixelStyle(G.tex, G.settings.pixel);
     if (this.post) { this.post.scale = G.settings.renderScale; this.post.effects = G.settings.effects; }
     this.renderer.shadowMap.enabled = q !== 'low';
     if (G.env) { G.env.sun.castShadow = q !== 'low'; G.env.sun.shadow.mapSize.set(q === 'high' ? 2048 : 1024, q === 'high' ? 2048 : 1024); if (G.env.sun.shadow.map) { G.env.sun.shadow.map.dispose(); G.env.sun.shadow.map = null; } }
     if (G.traffic) G.traffic.target = q === 'high' ? 34 : q === 'medium' ? 22 : 12;
-    if (G.pedMgr) { G.pedMgr.target = q === 'high' ? 40 : q === 'medium' ? 24 : 14; G.pedMgr.cap = q === 'high' ? 90 : q === 'medium' ? 55 : 30; }
+    if (G.pedMgr) { G.pedMgr.target = q === 'high' ? 55 : q === 'medium' ? 32 : 18; G.pedMgr.cap = q === 'high' ? 120 : q === 'medium' ? 72 : 38; }
     this.camera.far = q === 'low' ? 650 : q === 'medium' ? 1400 : 5000; this.camera.updateProjectionMatrix();
     if (G.env) G.env.farLimit = this.camera.far * 0.95;
     this.resize();
@@ -205,7 +206,7 @@ class Game {
   }
 
   buildGarage() {
-    const icons = { car: '🚗', taxi: '🚕', police: '🚓', auto: '🛺', motorcycle: '🏍️', scooter: '🛵', cycle: '🚲', bus: '🚌', moped: '🛵', twostroke: '🏍️', vintage: '🛵', commuter: '🏍️', retro80: '🛵' };
+    const icons = { car: '🚗', taxi: '🚕', police: '🚓', auto: '🛺', motorcycle: '🏍️', scooter: '🛵', cycle: '🚲', bus: '🚌', moped: '🛵', twostroke: '🏍️', vintage: '🛵', commuter: '🏍️', retro80: '🛵', flycar: '🛸' };
     const grid = $('garageGrid'); grid.innerHTML = '';
     for (const [k, c] of Object.entries(VTYPES)) {
       const b = document.createElement('button');

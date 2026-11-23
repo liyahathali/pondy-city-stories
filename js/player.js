@@ -95,7 +95,7 @@ export class Player {
     let x = v.pos.x - rx * off, z = v.pos.z - rz * off;
     if (G.colliders.pointBlocked(x, z, 0.5)) { x = v.pos.x + rx * off; z = v.pos.z + rz * off; }
     if (G.colliders.pointBlocked(x, z, 0.5)) { x = v.pos.x - Math.sin(v.heading) * (v.cfg.length / 2 + 0.8); z = v.pos.z - Math.cos(v.heading) * (v.cfg.length / 2 + 0.8); }
-    this.pos.set(x, 0, z); this.yaw = v.heading; this.vy = 0;
+    this.pos.set(x, v.alt || 0, z); this.yaw = v.heading; this.vy = 0;
     this.vehicle = null;
     G.audio && G.audio.door();
     G.environmentHeadlightOff = true;
@@ -132,13 +132,20 @@ export class Player {
 
     // ground / jump
     const ground = this.swimming ? -0.75 : G.walkables.height(this.pos.x, this.pos.z);
-    if (I.hit('Space') && this.onGround && !this.crouch && this.downT <= 0 && !this.swimming) { this.vy = 5.6; this.onGround = false; G.audio && G.audio.jump(); }
+    if (I.hit('Space') && this.onGround && !this.crouch && this.downT <= 0 && !this.swimming) { this.vy = 6.2; this.onGround = false; this.jumpT = 0.6; G.audio && G.audio.jump(); }
     this.vy -= 16 * dt; this.pos.y += this.vy * dt;
     if (this.pos.y <= ground) { this.pos.y = ground; this.vy = 0; this.onGround = true; }
     else if (this.pos.y - ground > 0.05) this.onGround = false;
 
     // collisions
     G.colliders.resolveCircle(this.pos, 0.35, this.pos.y, this._tmpOut, 'vehonly');
+    // vault: jumping into a low obstacle (sea wall, hedge, railing, low rocks) climbs up and over it
+    this.jumpT = Math.max(0, (this.jumpT || 0) - dt);
+    const ob = this._tmpOut.box;
+    if (this._tmpOut.hit && ob && moving && (this.jumpT > 0 || (!this.onGround && this.vy > -3)) && ob.h - this.pos.y < 1.45 && ob.h < 2.6 && !this.swimming) {
+      this.pos.y = ob.h + 0.02; this.vy = Math.max(this.vy, 2.2); this.onGround = false; this.jumpT = 0;
+      this.pos.x += vx * dt * 1.5; this.pos.z += vz * dt * 1.5;   // carry the momentum over the top
+    }
     if (G.walkables.height(this.pos.x, this.pos.z) - this.pos.y > 0.5) {
       // bumped into a raised platform from the side: step back
       this.pos.x -= vx * dt; this.pos.z -= vz * dt;
@@ -240,7 +247,9 @@ export class Player {
     }
     const thr = I.axis('KeyS', 'KeyW') + I.axis('ArrowDown', 'ArrowUp');
     const steer = -(I.axis('KeyA', 'KeyD') + I.axis('ArrowLeft', 'ArrowRight'));
-    v.update(dt, { throttle: clamp(thr, -1, 1), steer: clamp(steer, -1, 1), handbrake: I.key('Space') });
+    const fly = v.cfg.fly, inAir = fly && v.flying;
+    v.update(dt, { throttle: clamp(thr, -1, 1), steer: clamp(steer, -1, 1), handbrake: !inAir && I.key('Space'), toggleFly: fly && I.hit('KeyG'), up: inAir && I.key('Space'), down: inAir && (I.key('KeyC') || I.key('ShiftLeft') || I.key('ControlLeft')) });
+    if (fly && I.hit('KeyG')) G.hud.notify(v.flying ? (v.landing ? 'Landing… / இறங்குகிறது' : 'Flight mode: Space ↑  C ↓  W/S thrust  A/D turn  G land') : 'Take-off! / பறக்கிறது', 3);
     if (v.type === 'cycle') pedal(this.h, v.wheelRot);
     if (I.key('KeyH')) { v.honk(); G.pedMgr.onHonk(v); G.animals && G.animals.onHonk(v.pos); }
     if (v.type === 'police' && I.hit('KeyG')) { v.siren = !v.siren; }
@@ -271,7 +280,7 @@ export class CameraRig {
     let tgt, dist, height;
     if (v) {
       tgt = this._t || (this._t = new THREE.Vector3());
-      tgt.set(v.pos.x, v.cfg.camH * 0.55 + 0.6, v.pos.z);
+      tgt.set(v.pos.x, v.cfg.camH * 0.55 + 0.6 + (v.alt || 0), v.pos.z);
       dist = v.cfg.camDist * this.zoom; height = 0;
       // auto-follow behind the vehicle
       const idle = G.time - this.lastManual > 1.4;

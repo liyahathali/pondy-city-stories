@@ -86,10 +86,10 @@ export class Audio {
       const E = v.cfg.eng; // [base Hz, 2nd osc ratio, filter brightness] for the retro bikes
       const base = E ? E[0] : v.isTwoWheel ? 70 : v.type === 'bus' ? 35 : v.type === 'auto' ? 55 : 48;
       const gear = (k * 4) % 1;
-      const f = base * (1 + k * 2.2 + gear * 0.5);
+      const f = v.flying ? base * (1.6 + k * 1.2) : base * (1 + k * 2.2 + gear * 0.5);
       this.engOsc.frequency.setTargetAtTime(f, t, 0.05); this.engOsc2.frequency.setTargetAtTime(f * (E ? E[1] : v.type === 'auto' ? 0.5 : 1.01), t, 0.05);
       this.engFilter.frequency.setTargetAtTime((400 + k * 1600) * (E ? E[2] : 1), t, 0.1);
-      this.engGain.gain.setTargetAtTime(0.06 + k * 0.07, t, 0.1);
+      this.engGain.gain.setTargetAtTime(v.flying ? 0.1 + k * 0.05 : 0.06 + k * 0.07, t, 0.1);
     } else this.engGain.gain.setTargetAtTime(0, t, 0.1);
     // siren: nearest police car with siren on
     let best = 0;

@@ -18,6 +18,7 @@ export const VTYPES = {
   vintage:    { label: 'Classic Scooter', maxSpeed: 22, accel: 7,  brake: 16, steer: 0.75, wheelBase: 1.12, width: 0.8, length: 1.8, grip: 9, mass: 105, hp: 50,  camDist: 4.6, camH: 1.9, circles: 2, twoWheel: true, eng: [62, 0.5, 0.9] },
   commuter:   { label: 'Commuter 100',   maxSpeed: 28, accel: 9,   brake: 19, steer: 0.72, wheelBase: 1.38, width: 0.8, length: 2.0, grip: 10, mass: 110, hp: 55,  camDist: 4.9, camH: 2.0, circles: 2, twoWheel: true, eng: [66, 1.01, 1.0] },
   retro80:    { label: 'Retro Scooter',  maxSpeed: 23, accel: 8,   brake: 17, steer: 0.76, wheelBase: 1.1, width: 0.78, length: 1.75, grip: 10, mass: 100, hp: 50, camDist: 4.6, camH: 1.9, circles: 2, twoWheel: true, eng: [80, 1.5, 1.2] },
+  flycar:     { label: 'Nova Sky (flying EV)', maxSpeed: 44, accel: 13, brake: 26, steer: 0.6, wheelBase: 2.96, width: 1.95, length: 4.8, grip: 10, mass: 1500, hp: 180, camDist: 8.5, camH: 2.5, circles: 2, twoWheel: false, eng: [118, 1.5, 2.4], fly: true },
   bus:        { label: 'PRTC Bus',       maxSpeed: 22, accel: 3.4, brake: 12, steer: 0.55, wheelBase: 6.9, width: 2.6, length: 11,  grip: 8,  mass: 9000, hp: 260, camDist: 15,  camH: 5,   circles: 4, twoWheel: false },
 };
 const BUS_COLORS = [0x1565c0, 0x2e7d32, 0xc62828, 0x6a1b9a];
@@ -31,6 +32,7 @@ export class Vehicle {
     this.id = _id++;
     this.type = type; this.cfg = VTYPES[type];
     let color = opts.color;
+    if (color === undefined && type === 'flycar') color = pick([0xf2f4f7, 0x101114, 0xb5121b, 0x1f4fa3, 0x8a9199]);
     if (color === undefined) color = type === 'police' ? 0xf5f5f5 : type === 'taxi' ? 0xf4d03f : type === 'bus' ? pick(BUS_COLORS) : type === 'auto' ? pick(AUTO_COLORS) : RETRO_COLORS[type] ? pick(RETRO_COLORS[type]) : pick(CAR_COLORS);
     const model = makeVehicleModel(type === 'taxi' ? 'taxi' : type, color);
     this.model = model; this.mesh = model.group;
@@ -66,6 +68,7 @@ export class Vehicle {
   update(dt, ctl) {
     const c = this.cfg;
     if (this.destroyed) { ctl = { throttle: 0, steer: 0, handbrake: true }; }
+    if (c.fly && this.flyUpdate(dt, ctl)) return;
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
     const rx = -fz, rz = fx; // right vector
     let vf = this.vx * fx + this.vz * fz;
@@ -99,6 +102,7 @@ export class Vehicle {
     // integrate
     this.pos.x += this.vx * dt; this.pos.z += this.vz * dt;
 
+    if (c.fly) this.followGround(dt);
     // keep out of the sea
     if (this.pos.x > SEA_X + 6) { this.pos.x = SEA_X + 6; this.vx = Math.min(0, this.vx) - 1; this.damage(Math.abs(vf) * 0.5); }
 
@@ -108,6 +112,54 @@ export class Vehicle {
     this.updateFire(dt);
   }
 
+  /** Flying EV: G toggles flight. In the air: W/S thrust, A/D yaw, Space climb, C/Shift descend. Returns true while airborne. */
+  flyUpdate(dt, ctl) {
+    const c = this.cfg; this.alt ??= 0; this.avy ??= 0; this.flyK ??= 0; this.pitchV ??= 0; this.rollV ??= 0;
+    const overSea = this.pos.x > SEA_X + 4, ground = overSea ? 1.4 : Math.max(0, G.walkables.height(this.pos.x, this.pos.z));
+    if (ctl.toggleFly && !this.destroyed) {
+      if (!this.flying) { this.flying = true; this.landing = false; this.avy = 3; }
+      else if (overSea) G.hud && G.hud.notify('Cannot land on water — fly back over land / தண்ணீரில் இறக்க முடியாது', 2.5);
+      else this.landing = true;
+    }
+    if (this.driver !== 'player' && this.flying && !overSea) this.landing = true;      // abandoned: settles down by itself
+    if (this.destroyed && this.flying) { this.landing = true; }
+    this.flyK = clamp(this.flyK + (this.flying ? dt : -dt) * 1.4, 0, 1);
+    if (!this.flying) return false;
+    // vertical
+    let want = this.landing ? -3.5 : ((ctl.up ? 1 : 0) - (ctl.down ? 1 : 0)) * 8;
+    if (!this.landing && this.alt < ground + 2.2 && !ctl.down) want = Math.max(want, 3);   // lift-off to a hover height
+    this.avy = lerp(this.avy, want, Math.min(1, dt * 2.5));
+    this.alt += this.avy * dt;
+    if (this.alt < ground) { this.alt = ground; this.avy = Math.max(0, this.avy); }
+    if (this.alt > 160) { this.alt = 160; this.avy = Math.min(0, this.avy); }
+    if (this.landing && this.alt <= ground + 0.03) { this.flying = false; this.landing = false; this.alt = ground; this.avy = 0; }
+    // horizontal: thrust along the nose, yaw on the spot, strong air damping (no skidding)
+    const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
+    let vf = this.vx * fx + this.vz * fz;
+    const thr = ctl.throttle;
+    if (thr) vf += thr * c.accel * 1.25 * dt * (1 - Math.max(0, vf) / 66); else vf -= Math.sign(vf) * Math.min(Math.abs(vf), 5 * dt);
+    vf = clamp(vf, -14, 62);
+    this.heading += ctl.steer * (1.15 - Math.min(0.5, Math.abs(vf) / 120)) * dt * (vf < -0.5 ? -1 : 1);
+    this.vx = fx * vf; this.vz = fz * vf; this.speed = vf; this.drift = 0;
+    this.pos.x += this.vx * dt; this.pos.z += this.vz * dt;
+    this.pos.x = clamp(this.pos.x, -2200, SEA_X + 420);
+    this.pitchV = lerp(this.pitchV, -thr * 0.07 - this.avy * 0.012, Math.min(1, dt * 3));
+    this.rollV = lerp(this.rollV, ctl.steer * 0.28 * Math.min(1, Math.abs(vf) / 18), Math.min(1, dt * 3));
+    this.collideStatic();
+    this.sync(dt);
+    if (this.honkCooldown > 0) this.honkCooldown -= dt;
+    this.updateFire(dt);
+    return true;
+  }
+  /** On wheels: drop under gravity off ledges, ride up onto platforms (e.g. after landing on the pier). */
+  followGround(dt) {
+    this.alt ??= 0; this.avy ??= 0;
+    const gr = Math.max(0, G.walkables.height(this.pos.x, this.pos.z));
+    if (this.alt > gr + 0.05) { this.avy -= 16 * dt; this.alt = Math.max(gr, this.alt + this.avy * dt); if (this.alt === gr) this.avy = 0; }
+    else { this.alt = gr; this.avy = 0; }
+    this.pitchV = lerp(this.pitchV || 0, 0, Math.min(1, dt * 4)); this.rollV = lerp(this.rollV || 0, 0, Math.min(1, dt * 4));
+  }
+
   collideStatic() {
     const tmp = this._cir || (this._cir = []);
     this.circles(tmp);
@@ -115,7 +167,7 @@ export class Vehicle {
     let worst = 0, nx = 0, nz = 0;
     for (const ci of tmp) {
       const p = { x: ci.x, z: ci.z };
-      G.colliders.resolveCircle(p, ci.r, 0.4, out);
+      G.colliders.resolveCircle(p, ci.r, (this.alt || 0) + 0.4, out);
       if (out.hit) {
         this.pos.x += p.x - ci.x; this.pos.z += p.z - ci.z;
         if (out.depth > worst) { worst = out.depth; nx = out.nx; nz = out.nz; }
@@ -179,6 +231,15 @@ export class Vehicle {
     const m = this.mesh;
     m.position.set(this.pos.x, 0, this.pos.z);
     m.rotation.y = this.heading;
+    if (this.cfg.fly) {
+      const k = this.flyK || 0, t = G.time || 0, hover = this.flying ? Math.sin(t * 2.1) * 0.06 * k : 0;
+      m.position.y = (this.alt || 0) + hover + k * 0.25;
+      this.model.body.rotation.set(this.pitchV || 0, 0, this.rollV || 0);
+      for (const f of this.model.folds) { f.rotation.z = -f.userData.side * k * Math.PI / 2; f.position.y = 0.38 + k * 0.12; }
+      for (const wg of this.model.wings) wg.scale.x = 0.01 + k;
+      this.model.glowM.opacity = k * (0.55 + 0.25 * Math.sin(t * 31) * Math.sin(t * 17));
+      const sh = this.model.shadow, up = m.position.y; sh.position.y = -up + 0.03; sh.material.opacity = 0.35 * Math.max(0, 1 - up / 45); sh.scale.setScalar(1 + up * 0.02);
+    }
     const wr = this.wheelRot += (this.speed * dt) / 0.33;
     for (const w of this.model.wheels) w.spin.rotation.x = wr * (0.33 / w.r);
     for (const w of this.model.steerWheels) w.pivot.rotation.y = this.steerAngle * (this.isTwoWheel ? 0.6 : 1);
@@ -246,6 +307,7 @@ export function collideVehicles(list) {
     const a = list[i];
     for (let j = i + 1; j < list.length; j++) {
       const b = list[j];
+      if (Math.abs((a.alt || 0) - (b.alt || 0)) > 1.6) continue;   // one of them is flying over the other
       const reach = (a.cfg.length + b.cfg.length) / 2 + 1;
       if (Math.abs(a.pos.x - b.pos.x) > reach || Math.abs(a.pos.z - b.pos.z) > reach) continue;
       a.circles(ca); b.circles(cb);

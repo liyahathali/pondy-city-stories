@@ -12,7 +12,7 @@ function pullingoLook() {
 }
 const pickReel = () => REEL_LINES[Math.floor(Math.random() * REEL_LINES.length)];
 import { SHOP_TYPES } from './stalls.js';
-import { CAFE, vendorProp } from './cafe.js';
+import { CAFE, vendorProp, waiterRoute } from './cafe.js';
 
 export class Ped {
   constructor(x, z, look, kind = 'civ') {
@@ -156,11 +156,21 @@ export class Ped {
         this.pos.x = this.home.x; this.pos.z = this.home.z;
         break;
       }
+      case 'waiter': { // café waiter: walks the aisles between the counter and the tables with a tray
+        if (!this.route) { this.route = waiterRoute(G.world); this.ri = 0; }
+        if (this.waitT > 0) { this.waitT -= dt; pose = 'idle'; this.yaw = angleLerp(this.yaw, this.faceYaw, Math.min(1, dt * 4)); break; }
+        const tg = this.route[this.ri], dx = tg.x - this.pos.x, dz = tg.z - this.pos.z, d = Math.hypot(dx, dz);
+        if (d < 0.2) {
+          if (tg.stop) { this.waitT = tg.stop; this.faceYaw = tg.yaw; if (Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 12 && Math.random() < 0.5) this.say('vendorTea', 2.5); }
+          if (++this.ri >= this.route.length) { this.route = waiterRoute(G.world); this.ri = 0; }
+        } else { mvx = dx / d; mvz = dz / d; moveSpeed = 1.05; }
+        break;
+      }
       case 'bench': { // sitting on a promenade bench, watching the sea
         pose = this.standHang ? 'idle' : this.onSand || this.onBike || this.chair ? 'sit' : 'bench';
         this.pos.set(this.home.x, this.home.y !== undefined ? this.home.y : this.onWall ? 0.5 : this.onSand ? -0.78 : 0.08, this.home.z); this.yaw = this.homeYaw;
         if (this.standHang) this.phase += dt * 1.5;
-        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 22) { this.say(this.chair ? 'chat' : 'promenade', 3.5); this.sayT = rand(5, 11); } }
+        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 22) { this.say(this.chair ? 'chat' : 'promenade', 3.5); this.sayT = this.chair ? rand(12, 26) : rand(5, 11); } }
         break;
       }
       case 'stroll': { // promenade walk, in small groups of friends/families
@@ -303,7 +313,7 @@ export class Ped {
   checkVehicles(dt) {
     // look out for oncoming vehicles: step briskly out of their path (and turn to look at them)
     if (!this.dead && !this.down && this.state !== 'bench' && this.state !== 'vendor') for (const v of G.vehicles) {
-      const sp = Math.hypot(v.vx, v.vz); if (sp < 4) continue;
+      const sp = Math.hypot(v.vx, v.vz); if (sp < 4 || (v.alt || 0) > 1.5) continue;
       const dx = this.pos.x - v.pos.x, dz = this.pos.z - v.pos.z; if (dx * dx + dz * dz > 400) continue;
       const fx = v.vx / sp, fz = v.vz / sp, along = dx * fx + dz * fz, lat = dx * -fz + dz * fx;
       if (along > 0 && along < v.cfg.length / 2 + sp * 0.9 && Math.abs(lat) < v.cfg.width / 2 + 0.9) {
@@ -567,7 +577,10 @@ export class PedManager {
   /** Café customers have their own allowance on top of the street crowd, so the café is never empty. */
   spawnCafe(pp, W) {
     const hr = G.env.hour, cafeCap = G.settings.quality === 'low' || G.isTouch ? 8 : G.settings.quality === 'medium' ? 14 : 22;
-    for (const s of W.cafeStaff || []) this.spot(s, pp, () => ({ x: s.x, z: s.z, yaw: s.yaw, kind: 'coffee', call: 'vendorTea' }));
+    if (W.cafeTableSpots && Math.hypot(CAFE.x - pp.x, CAFE.z - pp.z) < 85 && !(W.cafeWaiter && G.peds.includes(W.cafeWaiter) && !W.cafeWaiter.dead)) {
+      const lk = randomLook('civ'); lk.female = false; lk.shirt = 0xf4f4f0; lk.shirtPat = 'plain'; lk.longSleeve = true; lk.pants = 0x1c1c1c; lk.tropical = -1; lk.lungi = false; lk.dhoti = false; lk.vest = false;
+      const wt = this.spawnAt(CAFE.x + 1.5, CAFE.z - 10.4, lk, 'civ'); wt.state = 'waiter'; wt.prop = 'tray'; vendorProp(wt.h, 'tray'); W.cafeWaiter = wt;
+    }
     for (const s of W.shops || []) if (s.type === 'coffee') this.spot(s, pp, () => ({ x: s.vendor.x, z: s.vendor.z, yaw: s.vendor.yaw, kind: 'coffee', call: 'vendorTea' }));
     if (W.cafeSeats && Math.hypot(CAFE.x - pp.x, CAFE.z - pp.z) < 85) {
       if (!W.cafeTables) { const by = {}; for (const st of W.cafeSeats) (by[st.table] ??= []).push(st); W.cafeTables = Object.values(by); }
@@ -581,7 +594,7 @@ export class PedManager {
         const order = [0, 1, 2, 3].sort(() => Math.random() - 0.5), members = [];
         for (let j = 0; j < n; j++) {
           const st = list[order[j]], p = this.spawnAt(st.x, st.z, lookFor(j), 'civ');
-          p.home = { x: st.x, z: st.z, y: CAFE.floor + CAFE.seatY }; p.homeYaw = st.yaw; p.yaw = st.yaw; p.state = 'bench'; p.chair = true; p.sayT = rand(1, 8);
+          p.home = { x: st.x, z: st.z, y: CAFE.floor + CAFE.seatY }; p.homeYaw = st.yaw; p.yaw = st.yaw; p.state = 'bench'; p.chair = true; p.sayT = rand(2, 24);
           members.push(p);
         }
         for (let j = 0; j < members.length; j++) members[j].mate = members[(j + 1) % members.length];

@@ -6,7 +6,7 @@ import { makeHuman } from './models.js';
 import { TEA_STALLS, SEA_X } from './config.js';
 
 const rng = seeded(99);
-const STEP_Z = [-400, -300, -230, -20, 30, 110, 175, 250]; // openings in the sea wall with steps to the beach
+const STEP_Z = [-400, -350, -300, -265, -230, -195, -120, -50, -20, 0, 30, 110, 140, 175, 250, 280]; // openings in the sea wall with steps down to the beach (every 30-50 m)
 const WHITE = () => mat(0xf6f3ec, { roughness: 0.7 });
 const STONE = () => mat(0xb9ad97, { roughness: 0.95 });
 

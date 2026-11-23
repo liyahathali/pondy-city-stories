@@ -21,6 +21,13 @@ const DRIVE = [
   { code: 'KeyE', label: '🎯', name: 'Mission', cls: 'b-use' },
   { code: 'KeyG', label: '🚨', name: 'Siren', cls: 'b-crouch', police: true },
 ];
+const FLY = [
+  { code: 'Space', label: '⤒', name: 'Up / Brake', cls: 'b-jump' },
+  { code: 'KeyC', label: '⤓', name: 'Down', cls: 'b-punch' },
+  { code: 'KeyF', label: '⇱', name: 'Get out', cls: 'b-enter' },
+  { code: 'KeyE', label: '🎯', name: 'Mission', cls: 'b-use' },
+  { code: 'KeyG', label: '✈', name: 'Fly / Land', cls: 'b-crouch' },
+];
 const TOP = [
   { code: 'Escape', label: '⏸' }, { code: 'KeyM', label: '🗺' }, { code: 'KeyR', label: '📻' }, { code: 'KeyV', label: '🚗' }, { code: 'KeyN', label: '🌧' },
 ];
@@ -78,7 +85,7 @@ export class TouchControls {
   }
   setMode(m) {
     if (this.mode === m) return; this.mode = m; this.btns.innerHTML = '';
-    for (const b of m.startsWith('drive') ? DRIVE : FOOT) if (!b.police || m === 'driveP') this.btns.appendChild(this.button(b, 'tbtn'));
+    for (const b of m === 'driveF' ? FLY : m.startsWith('drive') ? DRIVE : FOOT) if (!b.police || m === 'driveP') this.btns.appendChild(this.button(b, 'tbtn'));
   }
   /** called every frame: show controls only while playing, and swap the button set on foot / in a vehicle */
   update(state) {
@@ -86,7 +93,7 @@ export class TouchControls {
     this.root.style.display = playing || menu ? 'block' : 'none';
     this.root.classList.toggle('menuOnly', menu);
     if (!playing) return;
-    const P = G.player; this.setMode(P && P.vehicle ? (P.vehicle.type === 'police' ? 'driveP' : 'drive') : 'foot');
+    const P = G.player; this.setMode(P && P.vehicle ? (P.vehicle.type === 'police' ? 'driveP' : P.vehicle.cfg.fly ? 'driveF' : 'drive') : 'foot');
   }
 }
 
