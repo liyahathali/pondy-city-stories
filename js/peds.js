@@ -12,6 +12,7 @@ function pullingoLook() {
 }
 const pickReel = () => REEL_LINES[Math.floor(Math.random() * REEL_LINES.length)];
 import { SHOP_TYPES } from './stalls.js';
+import { CAFE, vendorProp } from './cafe.js';
 
 export class Ped {
   constructor(x, z, look, kind = 'civ') {
@@ -156,10 +157,10 @@ export class Ped {
         break;
       }
       case 'bench': { // sitting on a promenade bench, watching the sea
-        pose = this.standHang ? 'idle' : this.onSand || this.onBike ? 'sit' : 'bench';
+        pose = this.standHang ? 'idle' : this.onSand || this.onBike || this.chair ? 'sit' : 'bench';
         this.pos.set(this.home.x, this.home.y !== undefined ? this.home.y : this.onWall ? 0.5 : this.onSand ? -0.78 : 0.08, this.home.z); this.yaw = this.homeYaw;
         if (this.standHang) this.phase += dt * 1.5;
-        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 22) this.say('promenade', 3.5); }
+        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 22) { this.say(this.chair ? 'chat' : 'promenade', 3.5); this.sayT = rand(5, 11); } }
         break;
       }
       case 'stroll': { // promenade walk, in small groups of friends/families
@@ -184,6 +185,7 @@ export class Ped {
         }
         this.sayT -= dt;
         if (this.sayT <= 0 && (this.leader || this.followers) && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 20) this.say(Math.random() < 0.5 ? 'promenade' : 'chat', 3.2);
+        else if (this.sayT <= 0 && this.prop && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 16) { this.say('vendorCart', 3); this.sayT = rand(7, 14); }
         break;
       }
       case 'flee': {
@@ -371,6 +373,17 @@ export class PedManager {
     if (z > -182 && z < -138) return;
     const onSand = z > -60 && Math.random() < 0.35;
     const lane = onSand ? rand(526, 534) : rand(501.5, 507.5), dir = Math.random() < 0.5 ? 1 : -1;
+    if (Math.random() < 0.2 && G.peds.filter((p) => p.prop).length < 4) {   // balloon / candy-floss / drum sellers walking the sea front
+      const n = Math.random() < 0.3 ? 2 : 1, prop = pick(['balloons', 'balloons', 'candy', 'drums']);
+      let first = null;
+      for (let i = 0; i < n; i++) {
+        const v = this.spawnAt(lane + i * 0.9, z - i * 0.6, randomLook('vendor'), 'civ');
+        v.prop = prop; vendorProp(v.h, prop); v.sayT = rand(2, 8);
+        if (i === 0) { first = v; v.state = 'stroll'; v.lane = lane; v.dir = dir; v.yaw = dir > 0 ? 0 : Math.PI; v.speed = rand(0.55, 0.8); }
+        else { v.state = 'stroll'; v.leader = first; v.slot = [0.9, 0.3]; }
+      }
+      return;
+    }
     const kind = this.pickGroupKind();
     const leader = this.spawnGroup(kind, lane, z, 'stroll');
     leader.lane = lane; leader.dir = dir; leader.yaw = dir > 0 ? 0 : Math.PI; leader.speed = rand(0.85, 1.2);
@@ -537,8 +550,9 @@ export class PedManager {
 
   /** Vendors at tea stalls/carts and people on benches near the player. */
   spawnSpots(pp) {
-    if (this.full(4)) return;
     const W = G.world;
+    this.spawnCafe(pp, W);
+    if (this.full(4)) return;
     for (const s of W.shops || []) this.spot(s, pp, () => ({ x: s.vendor.x, z: s.vendor.z, yaw: s.vendor.yaw, kind: s.type, call: SHOP_TYPES[s.type].call }));
     const hr = G.env.hour, wallBusy = hr > 16.5 || hr < 1 ? 3 : 7; // dusk and night: lots of people on the wall
     (W.wallSeats || []).forEach((b, i) => {
@@ -550,11 +564,38 @@ export class PedManager {
       this.spot(b, pp, () => ({ x: b.x, z: b.z + (Math.random() - 0.5) * 0.9, yaw: Math.PI / 2, kind: 'bench' }));
     });
   }
+  /** Café customers have their own allowance on top of the street crowd, so the café is never empty. */
+  spawnCafe(pp, W) {
+    const hr = G.env.hour, cafeCap = G.settings.quality === 'low' || G.isTouch ? 8 : G.settings.quality === 'medium' ? 14 : 22;
+    for (const s of W.cafeStaff || []) this.spot(s, pp, () => ({ x: s.x, z: s.z, yaw: s.yaw, kind: 'coffee', call: 'vendorTea' }));
+    for (const s of W.shops || []) if (s.type === 'coffee') this.spot(s, pp, () => ({ x: s.vendor.x, z: s.vendor.z, yaw: s.vendor.yaw, kind: 'coffee', call: 'vendorTea' }));
+    if (W.cafeSeats && Math.hypot(CAFE.x - pp.x, CAFE.z - pp.z) < 85) {
+      if (!W.cafeTables) { const by = {}; for (const st of W.cafeSeats) (by[st.table] ??= []).push(st); W.cafeTables = Object.values(by); }
+      W.cafeTables.forEach((list, i) => {
+        if ((i * 3 + Math.floor(hr)) % 4 === 0 || (hr > 0.5 && hr < 6.5)) return;     // a few tables free; quiet before dawn
+        if (list.ped && G.peds.includes(list.ped) && !list.ped.dead) return;
+        if (G.peds.filter((q) => q.chair).length >= cafeCap) return;
+        const kind = pick(['friendsM', 'friendsF', 'couple', 'family', 'tourists', 'mixed']);
+        const n = kind === 'couple' ? 2 : 2 + Math.floor(Math.random() * 3);
+        const lookFor = (j) => kind === 'couple' ? randomLook(j ? 'youthF' : 'youthM') : kind === 'friendsM' ? randomLook('youthM') : kind === 'friendsF' ? randomLook('youthF') : kind === 'tourists' ? randomLook('tourist') : kind === 'mixed' ? randomLook(j % 2 ? 'youthF' : 'youthM') : randomLook('civ');
+        const order = [0, 1, 2, 3].sort(() => Math.random() - 0.5), members = [];
+        for (let j = 0; j < n; j++) {
+          const st = list[order[j]], p = this.spawnAt(st.x, st.z, lookFor(j), 'civ');
+          p.home = { x: st.x, z: st.z, y: CAFE.floor + CAFE.seatY }; p.homeYaw = st.yaw; p.yaw = st.yaw; p.state = 'bench'; p.chair = true; p.sayT = rand(1, 8);
+          members.push(p);
+        }
+        for (let j = 0; j < members.length; j++) members[j].mate = members[(j + 1) % members.length];
+        if (members.length > 1) { members[0].members = members; members[0].groupKind = kind; }
+        list.ped = members[0];
+      });
+    }
+  }
   spot(s, pp, make) {
     if (s.ped && G.peds.includes(s.ped) && !s.ped.dead) return;
     if (Math.hypot(s.x - pp.x, s.z - pp.z) > 110) return;
     const m = make();
-    const vl = randomLook(m.kind === 'flowers' ? 'civ' : 'vendor'); if (m.kind === 'flowers') { vl.female = true; }
+    let vl = randomLook(m.kind === 'flowers' ? 'civ' : 'vendor'); if (m.kind === 'flowers') { vl.female = true; }
+    if (m.kind === 'seafood') { for (let k = 0; k < 30 && !vl.female; k++) vl = randomLook('civ'); vl.female = true; vl.saree = true; }
     const p = this.spawnAt(m.x, m.z, m.kind === 'bench' ? null : (m.kind === 'flowers' ? null : vl), 'civ');
     p.home = { x: m.x, z: m.z }; p.homeYaw = m.yaw; p.yaw = m.yaw;
     p.state = m.kind === 'bench' ? 'bench' : 'vendor'; p.vendorKind = m.kind; p.callCtx = m.call; p.onWall = !!m.wall;

@@ -6,6 +6,7 @@ import { GeoBuilder, seeded, bake, mat } from './utils.js';
 import { NS_STREETS, EW_STREETS, CANAL, SIDEWALK, RESERVED, SEA_X, FLOOR_H, WORLD, CITY_X0, CITY_X1, CITY_Z0, CITY_Z1, EXCLUDE } from './config.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildPier } from './pier.js';
+import { buildCafe } from './cafe.js';
 import { buildStalls } from './stalls.js';
 import { buildShopFront } from './shopboards.js';
 
@@ -24,6 +25,7 @@ export class World {
     buildLandmarks(this);
     buildPier(this);
     buildStalls(this);
+    buildCafe(this);
     this.buildVillages();
     this.buildStreetLights();
     this.buildPoles();

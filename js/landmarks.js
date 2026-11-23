@@ -289,6 +289,7 @@ export function buildLandmarks(w) {
       for (let x = 513.9; x < bandEnd; x += 1.45) {
         if (openingAt(z) && x < bandEnd - 1) continue;
         if (rng() < 0.08) continue;
+        if (x > 512.5 && x < 531.5 && z > -86.5 && z < -57.5) continue;   // café footprint
         const t = (x - 513.5) / Math.max(1, bandEnd - 513.5);
         slabs.push([x + rng.range(-0.4, 0.4), z + rng.range(-0.35, 0.35), t]);
       }

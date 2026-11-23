@@ -451,7 +451,7 @@ export class RealHumans {
     const av = this.pool[kind].pop() || this.make(kind);
     this.dress(av, h.look);
     av.host = h; av.hidden.length = 0;
-    h.root.traverse((o) => { if (o.isMesh && o.visible) { o.visible = false; av.hidden.push(o); } });
+    h.root.traverse((o) => { if (o.isMesh && o.visible && !o.userData.prop) { o.visible = false; av.hidden.push(o); } });
     h.root.add(av.root); h.av = av;
     h.root.getWorldPosition(av.last); av.speed = 0; av.cur = null;
     this.active.add(av);

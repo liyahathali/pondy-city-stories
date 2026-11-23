@@ -171,7 +171,7 @@ export function buildPier(w) {
   const bould = new THREE.DodecahedronGeometry(1, 1); { const p = bould.attributes.position; for (let i = 0; i < p.count; i++) { const s = 1 + Math.sin(p.getX(i) * 5.1 + p.getZ(i) * 3.3) * 0.18; p.setXYZ(i, p.getX(i) * s, p.getY(i) * 0.7 * s, p.getZ(i) * s); } bould.computeVertexNormals(); }
   const bM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
   const spots = [];
-  for (let z = PZ - 70; z < PZ - 6; z += 1.4) for (let x = 512; x < 519 + (PZ - 6 - z) * 0.06; x += 1.6) if (rng() > 0.1) spots.push([x + rng.range(-0.4, 0.4), z + rng.range(-0.4, 0.4)]);
+  for (let z = PZ - 70; z < PZ - 6; z += 1.4) for (let x = 512; x < 519 + (PZ - 6 - z) * 0.06; x += 1.6) if (rng() > 0.1 && !(x > 512.5 && z > -87 && z < -57)) spots.push([x + rng.range(-0.4, 0.4), z + rng.range(-0.4, 0.4)]);
   const im = new THREE.InstancedMesh(bould, bM, spots.length), mx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), cc = new THREE.Color();
   spots.forEach(([x, z], i) => { const s = rng.range(0.7, 1.4); e.set(rng() * 3, rng() * 3, rng() * 3); q.setFromEuler(e); mx.compose(new THREE.Vector3(x, 0.25 - (x - 512) * 0.05, z), q, new THREE.Vector3(s * 1.2, s, s)); im.setMatrixAt(i, mx); im.setColorAt(i, cc.setHSL(0.6, 0.04, rng.range(0.1, 0.2))); });
   im.castShadow = im.receiveShadow = true; scene.add(im);
@@ -189,7 +189,7 @@ export function buildPier(w) {
     for (let n = 0; n < 3; n++) { const ng = new THREE.IcosahedronGeometry(0.55 + rng() * 0.25, 1); const o = put(b, ng, netM, -1.3 + n * 1.2, 1.05, rng.range(-0.2, 0.2)); o.scale.set(1.3, 0.55, 1); }
     if (!float) col.addC(x, z, 3, 3, 1.2, 'boat');
   };
-  boat(524, PZ - 14, 0.4, 0); boat(526.5, PZ - 22, -0.3, 1); boat(522.8, PZ - 29, 0.15, 0); boat(527, PZ + 10, 0.6, 2); boat(560, PZ - 18, 1.2, 0, true);
+  boat(524, PZ - 10, 0.4, 0); boat(527.5, PZ + 9, -0.3, 1); boat(527, PZ + 33, 0.15, 0); boat(527.5, PZ + 47, 0.6, 2); boat(560, PZ - 18, 1.2, 0, true);
   bake(beach);
   w.treeSpots.push([508, PZ - 9, 'palm'], [508, PZ + 9, 'palm'], [506, PZ - 26, 'palm']);
   return g;

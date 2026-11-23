@@ -8,6 +8,7 @@ import { boxMesh, mat } from './utils.js';
 import { SEA_X } from './config.js';
 import { t, vlabel } from './i18n.js';
 import { SHOP_TYPES } from './stalls.js';
+import { PIER } from './pier.js';
 
 export class Player {
   constructor(x, z, yaw = 0) {
@@ -15,6 +16,7 @@ export class Player {
     // Vice City vibes: floral shirt dots + sunglasses
     for (let i = 0; i < 10; i++) boxMesh(h.parts.body, 0.07, 0.07, 0.01, mat(i % 2 ? 0xff5fa2 : 0xffe066), (Math.random() - 0.5) * 0.36, 0.1 + Math.random() * 0.45, 0.125);
     boxMesh(h.parts.head, 0.24, 0.06, 0.02, mat(0x050505, { metalness: 0.6, roughness: 0.2 }), 0, 0.02, 0.135);
+    h.look.tropical = 4;
     this.h = h; this.mesh = h.root; G.scene.add(this.mesh);
     this.pos = new THREE.Vector3(x, 0, z); this.yaw = yaw; this.vy = 0; this.onGround = true;
     this.crouch = false; this.health = 100; this.maxHealth = 100; this.armor = 0;
@@ -143,8 +145,11 @@ export class Player {
     }
     this.collideVehicles(dt);
     // sea: wade then swim, with a limit
-    this.swimming = this.pos.x > SEA_X + 3;
-    if (this.pos.x > SEA_X + 30) this.pos.x = SEA_X + 30;
+    // standing on a raised structure over the water (the Old Pier) is not swimming
+    const wh = G.walkables.height(this.pos.x, this.pos.z), onDeck = wh > 0.5 && this.pos.y > wh - 0.6;
+    this.swimming = this.pos.x > SEA_X + 3 && !onDeck && this.pos.y < 0.4;
+    const nearPier = Math.abs(this.pos.z - PIER.z) < 14, maxX = nearPier ? PIER.x0 + PIER.len + 10 : SEA_X + 30;
+    if (this.pos.x > maxX) this.pos.x = maxX;
 
     // punching
     if (this.punchT > 0) this.punchT -= dt;
