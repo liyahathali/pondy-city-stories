@@ -7,6 +7,7 @@ import { makeTextures, setPixelStyle } from './textures.js';
 import { setHumanAtlas, loadVehicleModels } from './models.js';
 import { RealHumans } from './realhumans.js';
 import { BeachLife } from './beachlife.js';
+import { Conversations } from './dialogue.js';
 import { Animals } from './animals.js';
 import { World } from './world.js';
 import { Environment } from './environment.js';
@@ -141,6 +142,7 @@ class Game {
       G.hud = new HUD();
       G.animals = new Animals();
       G.beach = new BeachLife(this.scene);
+      G.convos = new Conversations();
       G.real = new RealHumans(); G.real.load().then(() => this.applyQuality()).catch((e) => console.warn('realistic characters unavailable:', e));
       G.radio = new Radio();
       this.spawnParked();
@@ -370,6 +372,8 @@ class Game {
         G.pedMgr.update(sdt);
         G.animals && G.animals.update(sdt);
         G.beach && G.beach.update(sdt);
+        G.convos && G.convos.update(sdt);
+        if (G.player && !G.playerSpeaker) G.playerSpeaker = { pos: G.player.pos, keepBubble: true, voice: { female: false, pitchJ: 0, rate: 1 }, h: G.player.h };
         G.police.update(sdt);
         G.missions.update(sdt);
         G.pickups.update(sdt);

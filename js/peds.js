@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { G } from './state.js';
 import { clamp, lerp, rand, pick, angleLerp, wrapAngle } from './utils.js';
 import { makeHuman, animateHuman, randomLook } from './models.js';
-import { dialogue, convo, REEL_LINES, GAANA_LINES } from './i18n.js';
+import { dialogue, convo, CONVOS, REEL_LINES, GAANA_LINES } from './i18n.js';
+import { line as dLine, speak, persona, contextFor, playerChat } from './dialogue.js';
 import { Vehicle } from './vehicle.js';
 /** A pullingo-style look (bounded retries, then forced style) */
 function pullingoLook() {
@@ -33,30 +34,33 @@ export class Ped {
 
   /** Say a Tamil line from a dialogue context: bubble on screen + spoken voice when close. */
   say(ctx, secs = 3.5, priority = false) {
-    const line = dialogue(ctx);
-    G.hud && G.hud.speech(this, line, secs);
-    const pp = G.player.worldPos();
-    G.speech && G.speech.say(line[0], this.voice, Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z), priority);
+    const line = dLine(this, ctx);           // memory-aware: this person never repeats a recent line
+    speak(this, line, secs);
     this.sayT = rand(8, 16);
     return line;
   }
   sayLine(main, sub, lang = 'ta-IN', secs = 3.4) {
-    G.hud && G.hud.speech(this, [main, sub], secs);
-    const pp = G.player.worldPos();
-    G.speech && G.speech.say(main, this.voice, Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z), false, lang);
+    speak(this, [main, sub], secs, lang);
   }
   /** Group leader runs a scripted conversation among the members when the player is close enough to hear. */
   tickConvo(dt) {
-    const c = this.cv || (this.cv = { t: rand(1, 6), i: 0, script: null });
+    const c = this.cv || (this.cv = { t: rand(1, 6), i: 0, script: null, used: [] });
     c.t -= dt; if (c.t > 0) return;
+    if (this.members.some((m) => m.chatQ)) { c.t = 1; return; }   // hold the group's chat while one of them talks to the player
+    if (c.script) {             // a hand-written group scene in progress (tourists in English/French, reels, banter)
+      const [who, main, sub, lang] = c.script[c.i++];
+      const sp = this.members[who % this.members.length];
+      if (sp && !sp.dead && G.peds.includes(sp)) { sp.sayLine(main, sub, lang || 'ta-IN', 3.6); for (const m of this.members) if (m !== sp) m.lookAt = sp; }
+      c.t = 1.2 + main.length * 0.045 + rand(0.3, 1.1);
+      if (c.i >= c.script.length) { c.script = null; for (const m of this.members) { m.cvCD = G.time + rand(20, 45); m.lookAt = null; } }
+      return;
+    }
+    c.t = 2;
     const pp = G.player.worldPos();
-    if (Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) > 28) { c.t = 2; return; }
-    if (!c.script || c.i >= c.script.length) { c.script = convo(this.groupKind); c.i = 0; if (c.done) { c.done = false; c.t = rand(10, 18); return; } }
-    const [who, main, sub, lang] = c.script[c.i++];
-    const sp = this.members[who % this.members.length];
-    if (sp && !sp.dead && G.peds.includes(sp)) sp.sayLine(main, sub, lang || 'ta-IN', 3.6);
-    c.t = 3.4 + main.length * 0.02;
-    if (c.i >= c.script.length) c.done = true;
+    if (Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) > 28 || G.convos.busy(this) || (this.cvCD || 0) > G.time) return;
+    const scripts = CONVOS[this.groupKind] || [], fresh = scripts.map((s, i) => i).filter((i) => !c.used.includes(i));
+    if (fresh.length && (this.groupKind === 'tourists' || Math.random() < 0.3)) { const i = fresh[Math.floor(Math.random() * fresh.length)]; c.used.push(i); c.script = scripts[i]; c.i = 0; c.t = 0.4; return; }
+    G.convos.start(this.members, contextFor(this));   // otherwise a fresh conversation assembled for this place and these people
   }
   greetCtx() { const h = G.env.hour; return h < 4 || h > 21 ? 'greetNight' : h < 12 ? 'greetMorning' : 'greetEvening'; }
 
@@ -86,6 +90,7 @@ export class Ped {
   }
 
   hitByPlayer(dmg, from) {
+    persona(this).hurt++;
     if (this.dead) return;
     this.health -= dmg;
     const dx = this.pos.x - from.x, dz = this.pos.z - from.z, d = Math.hypot(dx, dz) || 1;
@@ -116,18 +121,27 @@ export class Ped {
   }
 
   talkTo(player) {
-    if (this.dead || this.down) return;
-    if (this.state === 'vendor' || this.state === 'bench') { this.say(this.state === 'vendor' ? (this.callCtx || 'vendorTea') : 'promenade', 4, true); return; }
-    this.prevState = this.state === 'talk' ? this.prevState : this.state;
-    this.state = 'talk'; this.talkT = 4.5;
-    this.yaw = Math.atan2(player.pos.x - this.pos.x, player.pos.z - this.pos.z);
-    const ctx = this.kind === 'cop' ? 'cop' : G.env.rain > 0.5 && Math.random() < 0.4 ? 'rain' : this.t - this.greeted > 30 ? this.greetCtx() : 'chat';
-    this.greeted = this.t;
-    this.say(ctx, 4.5, true);
+    if (this.dead || this.down || this.chatQ) return;
+    G.convos.interrupt(this);
+    if (!['vendor', 'bench', 'cricket', 'waiter'].includes(this.state)) {
+      this.prevState = this.state === 'talk' ? this.prevState : this.state;
+      this.state = 'talk'; this.talkT = 9;
+      this.yaw = Math.atan2(player.pos.x - this.pos.x, player.pos.z - this.pos.z);
+    }
+    this.greeted = this.t; this.lookAt = G.playerSpeaker;
+    this.chatQ = this.kind === 'cop' ? [['player', dLine(this, 'playerHello')], ['npc', dLine(this, 'cop')]] : playerChat(this); this.chatT = 0;
   }
 
   update(dt, near) {
     this.t += dt;
+    if (this.chatQ) {           // the exchange with the player, with a natural beat between lines
+      this.chatT -= dt;
+      if (this.chatT <= 0) {
+        const nx = this.chatQ.shift();
+        if (!nx) { this.chatQ = null; if (this.state === 'talk') this.talkT = Math.min(this.talkT, 1.5); this.lookAt = null; }
+        else { const who = nx[0] === 'player' ? G.playerSpeaker : this; this.chatT = speak(who, nx[1]) * 0.85 + rand(0.35, 0.9); }
+      }
+    }
     if (this.dead || this.down) return this.updateDown(dt);
     let mvx = 0, mvz = 0, moveSpeed = 0, pose = 'walk';
     const P = G.player, pp = P.worldPos();
@@ -178,7 +192,7 @@ export class Ped {
         pose = this.standHang ? 'idle' : this.onSand || this.onBike || this.chair ? 'sit' : 'bench';
         this.pos.set(this.home.x, this.home.y !== undefined ? this.home.y : this.onWall ? 0.5 : this.onSand ? -0.78 : 0.08, this.home.z); this.yaw = this.homeYaw;
         if (this.standHang) this.phase += dt * 1.5;
-        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0 && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 22) { this.say(this.chair ? 'chat' : 'promenade', 3.5); this.sayT = this.chair ? rand(12, 26) : rand(5, 11); } }
+        if (this.mate) { this.sayT -= dt; if (this.sayT <= 0) { this.sayT = rand(2, 5); if (Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) < 24 && !G.convos.busy(this)) G.convos.start(this.members || this.mate.members || [this, this.mate], contextFor(this)); } }
         break;
       }
       case 'stroll': { // promenade walk, in small groups of friends/families
@@ -296,8 +310,15 @@ export class Ped {
       this.phase += dt * moveSpeed * 2.6;
       if (this.singer && pose === 'walk') pose = 'swag';
       if (pose === 'walk' && moveSpeed < 0.15) pose = 'idle';
+      if (pose === 'idle' && (this.h.speakUntil || 0) > G.time) pose = 'talk';   // hand gestures while speaking
       if (pose === 'idle' || pose === 'call' || pose === 'talk') this.phase += dt * 2;
       animateHuman(this.h, this.phase, clamp(moveSpeed / 3, 0, 1), pose);
+      const la = this.lookAt;   // turn the head towards whoever is talking
+      if (la && la.pos && (la.keepBubble || G.peds.includes(la))) {
+        let a = Math.atan2(la.pos.x - this.pos.x, la.pos.z - this.pos.z) - this.yaw; a = Math.atan2(Math.sin(a), Math.cos(a));
+        this.headY = (this.headY || 0) + (Math.max(-1, Math.min(1, a)) - (this.headY || 0)) * Math.min(1, dt * 5);
+        this.h.parts.head.rotation.y = this.headY;
+      } else if (this.headY) { this.headY *= Math.max(0, 1 - dt * 4); this.h.parts.head.rotation.y = this.headY; }
     }
     this.mesh.position.copy(this.pos);
     this.mesh.rotation.set(0, this.yaw, 0);

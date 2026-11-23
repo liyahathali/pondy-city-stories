@@ -503,7 +503,21 @@ export class RealHumans {
     av.cur = name; return next;
   }
 
+  /** Lip-sync while speaking (mouth opens on syllable-like rhythm with short gaps) and a resting smile by personality. */
+  face(av, dt) {
+    if (!av.morph) { av.morph = []; av.model.traverse((o) => { const d = o.morphTargetDictionary; if (d && d.mouthOpen !== undefined && o.morphTargetInfluences) av.morph.push([o, d.mouthOpen, d.mouthSmile]); }); av.mouth = 0; av.smileV = 0; }
+    if (!av.morph.length) return;
+    const h = av.host, now = G.time || 0, talking = (h.speakUntil || 0) > now;
+    let want = 0;
+    if (talking) { const s = Math.abs(Math.sin(now * 15.5) * Math.sin(now * 6.1 + (h.root.id % 7))); want = Math.sin(now * 2.7 + h.root.id) > 0.82 ? 0.04 : 0.1 + s * 0.55; }
+    av.mouth += (want - av.mouth) * Math.min(1, dt * 22);
+    const sm = (h.smile ?? 0.15) + (talking && h.smileBoost ? 0.35 : 0);
+    av.smileV += (Math.min(1, sm) - av.smileV) * Math.min(1, dt * 3);
+    for (const [o, io, is] of av.morph) { o.morphTargetInfluences[io] = av.mouth; if (is !== undefined) o.morphTargetInfluences[is] = av.smileV; }
+  }
+
   drive(av, dt) {
+    this.face(av, dt);
     const h = av.host, ud = h.root.userData, pose = ud.pose || 'walk';
     const p = h.root.getWorldPosition(_v); const inst = p.distanceTo(av.last) / dt; av.last.copy(p);
     av.speed += (Math.min(inst, 12) - av.speed) * Math.min(1, dt * 6);

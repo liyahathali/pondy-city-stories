@@ -30,7 +30,7 @@ export class Speech {
     const male = this.voices.find((v) => /valluvar|male|man/i.test(v.name) && !/female/i.test(v.name));
     u.voice = (who.female ? fem : male) || this.voices[0];
     u.pitch = who.female ? 1.1 + (who.pitchJ || 0) : 0.9 + (who.pitchJ || 0);
-    u.rate = who.old ? 0.85 : 1.0;
+    u.rate = (who.rate || 1) * (who.old ? 0.85 : 1.0);   // each person's own speaking speed
     u.volume = Math.max(0.15, 1 - dist / 18) * (G.settings.volume ?? 0.7);
     speechSynthesis.speak(u);
   }

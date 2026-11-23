@@ -5,6 +5,7 @@ import { G } from './state.js';
 import { randomLook, makeHuman, animateHuman } from './models.js';
 import { SEA_X } from './config.js';
 import { dialogue } from './i18n.js';
+import { speak } from './dialogue.js';
 import { seeded, pick, rand, clamp } from './utils.js';
 
 const rng = seeded(2468);
@@ -85,7 +86,8 @@ class Cricket {
     this.t += dt;
     const S = this.striker, B = this.bowler, K = this.keeper;
     switch (this.phase) {
-      case 'reset': if (this.t > 4 && Math.hypot(B.pos.x - (PX - 0.3), B.pos.z - (ZN - 7)) < 0.5) { this.phase = 'runup'; this.t = 0; this.go(B, PX - 0.3, ZN - 0.4, 3.4, 0); this.pose(S, 'bat', 0); if (Math.random() < 0.3) this.say(pick(this.fielders), 'cricket'); } break;
+      case 'reset': if (this.t > 1.2 && this.t < 1.3 && G.convos && Math.random() < 0.35) { const a = pick(this.fielders); G.convos.start([a, pick(this.kids.filter((k) => k !== a))], 'cricket', { noClose: true }); }
+        if (this.t > 4 && Math.hypot(B.pos.x - (PX - 0.3), B.pos.z - (ZN - 7)) < 0.5) { this.phase = 'runup'; this.t = 0; this.go(B, PX - 0.3, ZN - 0.4, 3.4, 0); this.pose(S, 'bat', 0); if (Math.random() < 0.3) this.say(pick(this.fielders), 'cricket'); } break;
       case 'runup': if (Math.hypot(B.pos.x - (PX - 0.3), B.pos.z - (ZN - 0.4)) < 0.3 || this.t > 5) { this.phase = 'deliver'; this.t = 0; this.pose(B, 'bowl', 0); } break;
       case 'deliver': {
         B.cphase = Math.min(1, this.t / 0.45);
@@ -235,7 +237,10 @@ class FishingBoat {
       else animateHuman(h, t * 2.4 + h.phase0, 0, 'pull');
     });
     this.sayT -= dt;
-    if (this.sayT <= 0 && Math.hypot(pp.x - this.BX, pp.z - this.BZ) < 60) { this.sayT = rand(7, 14); const sp = this.speaker || (this.speaker = { pos: new THREE.Vector3(), keepBubble: true }); sp.pos.setFromMatrixPosition(this.crew[1 + Math.floor(Math.random() * 2)].root.matrixWorld); sp.pos.y -= 0.6; const line = dialogue('fishermen'); G.hud && G.hud.speech(sp, line, 3); G.speech && G.speech.say(line[0], null, Math.hypot(pp.x - this.BX, pp.z - this.BZ), false); }
+    // the crew talk among themselves (fishing, weather, prices), voices and lines from the dialogue engine
+    if (!this.talkers) this.talkers = this.crew.slice(0, 3).map((h, i) => ({ pos: new THREE.Vector3(), keepBubble: true, fisher: true, h, voice: { female: false, pitchJ: (i - 1) * 0.08, rate: 1 } }));
+    for (const s of this.talkers) { s.pos.setFromMatrixPosition(s.h.root.matrixWorld); s.pos.y -= 0.4; }
+    if (this.sayT <= 0 && Math.hypot(pp.x - this.BX, pp.z - this.BZ) < 70 && G.convos) { this.sayT = rand(14, 26); G.convos.start(this.talkers, 'fishermen', { noClose: true }); }
   }
 }
 
