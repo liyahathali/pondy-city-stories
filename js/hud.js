@@ -151,7 +151,7 @@ export class HUD {
     const v = new THREE.Vector3(), w = innerWidth, h = innerHeight;
     for (const [ped, b] of this.bubbles) {
       b.t -= dt;
-      if (b.t <= 0 || ped.dead || !G.peds.includes(ped)) { this.removeSpeech(ped); continue; }
+      if (b.t <= 0 || ped.dead || (!G.peds.includes(ped) && !ped.keepBubble)) { this.removeSpeech(ped); continue; }
       v.set(ped.pos.x, ped.pos.y + 2.25, ped.pos.z).project(G.camera);
       const vis = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
       b.el.style.display = vis ? 'block' : 'none';

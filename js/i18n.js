@@ -159,6 +159,8 @@ export const DIALOGUE = {
   cop: [['போங்க சார், போங்க.', 'Move along, sir.'], ['கவனமா ஓட்டுங்க, சரியா?', 'Drive carefully, okay?'], ['எல்லாம் சரியா இருக்கா?', 'Everything alright here?'], ['ஹெல்மெட் போடுங்க!', 'Wear a helmet!']],
   copChase: [['நில்லு! நில்லு!', 'Stop! Stop!'], ['போலீஸ்! ஓடாதே!', "Police! Don't run!"], ['கைதுசெய்யப்படுகிறாய்!', 'You are under arrest!']],
   vendorTea: [['டீ! சூடான டீ! பத்து ரூபா!', 'Tea! Hot tea! Ten rupees!'], ['காபி, டீ, வடை!', 'Coffee, tea, vadai!'], ['வாங்க சார், ஒரு டீ குடிங்க!', 'Come sir, have a tea!']],
+  cricket: [['அடி! அடி! தூக்கி அடி!', 'Hit it! Hit it big!'], ['ஓடு! ஓடு! ரெண்டு ரன்!', 'Run! Run! Two runs!'], ['அவுட்! அவுட்!', 'Out! Out!'], ['சிக்ஸர்! சூப்பர்!', 'Sixer! Super!'], ['பந்தைப் போடு டா!', 'Bowl the ball, da!'], ['கேட்ச் பிடி!', 'Catch it!'], ['என் டர்ன் அடுத்தது!', 'My turn to bat next!']],
+  fishermen: [['இழு! ஒண்ணா இழு!', 'Pull! Pull together!'], ['ஐலசா! ஐலசா!', 'Heave-ho! Heave-ho!'], ['இன்னிக்கு நல்ல மீன் பாடு!', 'Good catch today!'], ['வலையை மெதுவா இழு!', 'Pull the net slowly!']],
   vendorCart: [['சுண்டல்! சூடான சுண்டல்!', 'Sundal! Hot sundal!'], ['ஐஸ்கிரீம்! குல்ஃபி!', 'Ice cream! Kulfi!'], ['மாங்கா, தேங்கா, பட்டாணி சுண்டல்!', 'Raw mango, coconut, peas sundal!']],
   vendorPani: [['பானி பூரி! சூடான பானி பூரி!', 'Pani puri! Fresh pani puri!'], ['வாங்க அக்கா, காரமா பானி பூரி!', 'Come sister, spicy pani puri!'], ['மசாலா பூரி, பேல் பூரி இருக்கு!', 'Masala puri and bhel puri too!']],
   vendorBajji: [['சூடான பஜ்ஜி! மிளகாய் பஜ்ஜி!', 'Hot bajji! Chilli bajji!'], ['போண்டா, வடை, பஜ்ஜி!', 'Bonda, vadai, bajji!']],

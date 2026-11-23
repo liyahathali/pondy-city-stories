@@ -55,6 +55,20 @@ function boardTex(lines, { w = 512, h = 256, bg = '#2b2118', fg = '#f3ead8', tit
   }, false);
 }
 
+const TAMIL_FONT = "'Noto Sans Tamil', 'Nirmala UI', 'Latha', 'Tamil Sangam MN', 'Tamil MN', sans-serif";
+/** Traditional painted name board: ivory panel, gold double border, kolam-dot corners, maroon Tamil lettering. */
+function tamilBoard() {
+  return canvasTex(1440, 260, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fbf3df'); g.addColorStop(1, '#efe0bd'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#b8892f'; x.lineWidth = 10; x.strokeRect(14, 14, w - 28, h - 28); x.lineWidth = 3; x.strokeRect(30, 30, w - 60, h - 60);
+    for (const [cx, cy] of [[62, 62], [w - 62, 62], [62, h - 62], [w - 62, h - 62]]) { x.fillStyle = '#8b1a1a'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; x.beginPath(); x.arc(cx + Math.cos(a) * 16, cy + Math.sin(a) * 16, 4, 0, 7); x.fill(); } x.beginPath(); x.arc(cx, cy, 6, 0, 7); x.fill(); }
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = 'rgba(80,20,10,0.25)'; x.font = `bold 118px ${TAMIL_FONT}`; x.fillText('லே கஃபே', w / 2 + 4, 108 + 4);
+    x.fillStyle = '#8b1a1a'; x.fillText('லே கஃபே', w / 2, 108);
+    x.fillStyle = '#3b2a1a'; x.font = `600 44px ${TAMIL_FONT}`; x.fillText('புதுச்சேரி கடற்கரை  •  LE CAFÉ  •  BEACH ROAD', w / 2, 200);
+  }, false);
+}
+
 /* ---------------- geometry helpers ---------------- */
 const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, ...o });
 function put(parent, geo, m, x, y, z, ry = 0, rx = 0, rz = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); parent.add(o); return o; }
@@ -82,6 +96,7 @@ export function buildCafe(w) {
   const woodM = M(0xffffff, { map: wood() }), shutterM = M(0xffffff, { map: wood('#6b3b1f') }), orangeM = M(0xffffff, { map: wood('#d9822b'), roughness: 0.7 });
   const darkM = M(0x2a2420), metalM = M(0xb9bcbf, { metalness: 0.8, roughness: 0.3 }), potM = M(0xa4552e), leafM = M(0x3f7a35, { flatShading: true });
   const H = 3.8, T = 0.3, FX = -8, EX = 8, NZ = -13, SZ = 13;
+  const glow = M(0xfff1d6, { emissive: 0xffc98a, emissiveIntensity: 0.0 }), glowBulb = glow;
   const wx = (u) => u - 13;   // wall local u (0..26) -> z
 
   // --- floor slab, walls with doors / shuttered windows / arches
@@ -144,8 +159,20 @@ export function buildCafe(w) {
     put(g, B(2.6, 0.1, 3.4), M(0xcfc8ba, { roughness: 0.9 }), FX - 1.25, 0.06, dz);
     put(g, B(1.0, 0.02, 1.6), M(0x8a6a3a, { roughness: 1 }), FX - 0.7, 0.12, dz);
     for (const sd of [-1, 1]) { const d = put(g, B(0.06, 2.6, 1.25), shutterM, FX + 0.55, 1.3, dz + sd * 1.25, sd * 1.25); d.position.x += 0.1; }
-    const enT = textTexture('ENTRANCE  →  CAFÉ', { w: 512, h: 96, bg: '#2a2420', fg: '#ffd36b', font: 'bold 46px Georgia' });
+    const enT = canvasTex(512, 96, (x) => { x.fillStyle = '#2a2420'; x.fillRect(0, 0, 512, 96); x.fillStyle = '#ffd36b'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = `bold 40px ${TAMIL_FONT}`; x.fillText('நுழைவு  •  ENTRANCE', 256, 50); }, false);
     put(g, new THREE.PlaneGeometry(2.2, 0.42), M(0xffffff, { map: enT }), FX - 0.2, 3.05, dz, -Math.PI / 2); }
+  // Tamil name board on the verandah parapet facing the promenade: carved teak frame, ivory panel, maroon letters, brass lamps
+  { const W2 = 7.2, H2 = 1.3, bt = tamilBoard();
+    const boardM = M(0xffffff, { map: bt, emissiveMap: bt, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.6 }); w.nightMats.push([boardM, 0.45]);
+    const by = H + 1.25;
+    put(g, B(0.16, H2 + 0.24, W2 + 0.24), M(0xffffff, { map: wood('#5a3216'), roughness: 0.55 }), FX - 0.05, by, 0);
+    put(g, new THREE.PlaneGeometry(W2, H2), boardM, FX - 0.14, by, 0, -Math.PI / 2);
+    for (const z of [-2.4, 0, 2.4]) {
+      put(g, B(0.04, 0.04, 0.55).translate(0, 0, 0), M(0xb8892f, { metalness: 0.8, roughness: 0.3 }), FX - 0.4, by + H2 / 2 + 0.22, z, Math.PI / 2);
+      const arm = put(g, B(0.5, 0.035, 0.035), M(0xb8892f, { metalness: 0.8, roughness: 0.3 }), FX - 0.3, by + H2 / 2 + 0.2, z); arm.rotation.z = -0.35;
+      put(g, new THREE.ConeGeometry(0.11, 0.14, 12, 1, true), M(0xb8892f, { metalness: 0.8, roughness: 0.3, side: THREE.DoubleSide }), FX - 0.55, by + H2 / 2 + 0.08, z);
+      put(g, new THREE.SphereGeometry(0.05, 8, 6), glowBulb, FX - 0.55, by + H2 / 2 + 0.02, z);
+    } }
   // potted plants along the facade, menu board, notice board, round blue lounge sign
   for (const z of [-11, -6.5, -3.3, 0.2, 3.4, 9.3, 12]) { put(g, new THREE.CylinderGeometry(0.28, 0.2, 0.45, 10), potM, FX - 0.65, 0.22, z); const l = put(g, new THREE.IcosahedronGeometry(0.42, 1), leafM, FX - 0.65, 0.75, z); l.scale.set(1, 0.85, 1); }
   put(g, B(0.08, 1.2, 0.8), M(0xffffff, { map: boardTex([['Filter coffee', '40'], ['Masala tea', '30'], ['Cold coffee', '90'], ['Croissant', '70'], ['Crêpe', '120'], ['Pizza', '220']], { w: 256, h: 384, title: 'MENU' }) }), FX - 0.2, 1.65, wx(17.5), -Math.PI / 2);
@@ -162,7 +189,7 @@ export function buildCafe(w) {
   for (let i = 0; i < 6; i++) put(g, new THREE.SphereGeometry(0.09, 8, 6), M(0xc98a3e), 2.6 + i * 0.24, IY + 1.2, NZ + 1.6);
   put(g, B(3.2, 1.2, 0.05), M(0xffffff, { map: boardTex([['Espresso', '60'], ['Cappuccino', '110'], ['Filter coffee', '40'], ['Iced latte', '140'], ['Lemon soda', '50']], { title: 'COFFEE & BAKES' }) }), 1.5, IY + 2.5, NZ + 0.18);
   put(g, B(1.2, 1.9, 0.5), woodM, 4.8, IY + 0.95, NZ + 0.45);   // back shelf
-  const glow = M(0xfff1d6, { emissive: 0xffc98a, emissiveIntensity: 0.0 }); w.nightMats.push([glow, 1.6]);
+  w.nightMats.push([glow, 1.6]);
   const seats = [];
   const tables = [[-5, -7], [-5, -2.5], [-1.2, -6.8], [-1.2, -1.8], [-1.2, 3.2], [2.8, -2.5], [2.8, 2.5], [2.8, 7.5], [-1.2, 9.5], [-5.2, 11]];
   for (const [tx, tz] of tables) {

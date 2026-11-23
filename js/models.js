@@ -348,6 +348,25 @@ export function animateHuman(h, phase, amt, pose = 'walk') {
     p.body.position.y = 0.95 + Math.abs(b) * 0.05;
     return;
   }
+  if (pose === 'bat') {   // batting: phase = swing 0 (back-lift, side-on stance) .. 1 (follow-through)
+    const w = phase, k = Math.sin(Math.min(1, w) * Math.PI * 0.5);
+    p.legL.rotation.set(-0.25, 0, 0.18); p.legR.rotation.set(0.15, 0, -0.18); p.body.position.y = 0.9; p.body.rotation.set(0.25, 0.9 - k * 2.0, 0);
+    p.armR.rotation.set(-0.4 - k * 1.3, 0, -0.5 + k * 0.6); p.armL.rotation.set(-0.5 - k * 1.2, 0, 0.6 - k * 0.5); p.head.rotation.y = -0.9 + k * 0.6; return;
+  }
+  if (pose === 'bowl') {  // bowling action: phase 0..1 = gather, arm windmills over the top, follow-through
+    const a = Math.min(1, phase) * Math.PI * 1.6;
+    p.armR.rotation.set(-a - 0.2, 0, -0.1); p.armL.rotation.set(-2.2 + Math.min(1, phase) * 2.4, 0, 0.2);
+    p.legL.rotation.set(-0.6 + phase * 0.6, 0, 0); p.legR.rotation.set(0.5 - phase * 0.9, 0, 0); p.body.rotation.set(0.1 + phase * 0.35, 0, 0); return;
+  }
+  if (pose === 'throw') { // overarm throw: phase 0 (cocked) .. 1 (released)
+    const k = Math.min(1, phase); p.armR.rotation.set(-2.8 + k * 2.4, 0, -0.2); p.armL.rotation.set(-1.2 + k * 0.9, 0, 0.3); p.body.rotation.set(-0.1 + k * 0.4, 0.5 - k * 0.9, 0); p.legL.rotation.set(-0.4, 0, 0); p.legR.rotation.set(0.3, 0, 0); return;
+  }
+  if (pose === 'pickup') { p.body.rotation.set(0.95, 0, 0); p.body.position.y = 0.82; p.armR.rotation.set(-0.7, 0, -0.1); p.armL.rotation.set(-0.5, 0, 0.1); p.legL.rotation.set(-0.5, 0, 0); p.legR.rotation.set(0.2, 0, 0); return; }
+  if (pose === 'pull') {  // hauling a net hand over hand, leaning back on each heave
+    const s2 = Math.sin(phase);
+    p.armL.rotation.set(-1.25 + s2 * 0.45, 0, 0.15); p.armR.rotation.set(-1.25 - s2 * 0.45, 0, -0.15);
+    p.body.rotation.set(0.35 - Math.max(0, s2) * 0.35, 0, 0); p.legL.rotation.set(-0.3, 0, 0.1); p.legR.rotation.set(0.25, 0, -0.1); p.head.rotation.x = 0.25; return;
+  }
   if (pose === 'film') { p.armR.rotation.set(-1.45, 0, -0.1); p.armL.rotation.set(-1.3, 0, 0.35); p.head.rotation.x = 0.1; return; }
   if (pose === 'dance') { // reel dance: arms up and swinging, hips bouncing
     const d = Math.sin(phase * 2.2);

@@ -13,6 +13,7 @@ function pullingoLook() {
 const pickReel = () => REEL_LINES[Math.floor(Math.random() * REEL_LINES.length)];
 import { SHOP_TYPES } from './stalls.js';
 import { CAFE, vendorProp, waiterRoute } from './cafe.js';
+import { sandY } from './beachlife.js';
 
 export class Ped {
   constructor(x, z, look, kind = 'civ') {
@@ -156,6 +157,13 @@ export class Ped {
         this.pos.x = this.home.x; this.pos.z = this.home.z;
         break;
       }
+      case 'cricket': { // driven by the beach-cricket scene: run to a target, or hold a batting/bowling/fielding pose
+        pose = this.cpose || 'walk';
+        if (this.ct) { const dx = this.ct.x - this.pos.x, dz = this.ct.z - this.pos.z, d = Math.hypot(dx, dz); if (d > 0.12) { mvx = dx / d; mvz = dz / d; moveSpeed = Math.min(this.cspeed || 1.4, d * 3 + 0.3); pose = 'walk'; } else { pose = 'idle'; if (this.cyaw !== undefined) this.yaw = angleLerp(this.yaw, this.cyaw, Math.min(1, dt * 6)); } }
+        else if (this.cpose === 'dance') this.phase += dt * 3;
+        else this.phase = this.cphase || 0;
+        break;
+      }
       case 'waiter': { // café waiter: walks the aisles between the counter and the tables with a tray
         if (!this.route) { this.route = waiterRoute(G.world); this.ri = 0; }
         if (this.waitT > 0) { this.waitT -= dt; pose = 'idle'; this.yaw = angleLerp(this.yaw, this.faceYaw, Math.min(1, dt * 4)); break; }
@@ -283,7 +291,7 @@ export class Ped {
       if (this.state !== 'walk') G.colliders.resolveCircle(this.pos, 0.3, 0, this._co || (this._co = { hit: false }), 'vehonly');
     }
     this.checkVehicles(dt);
-    if (this.state !== 'bench') this.pos.y = G.walkables.height(this.pos.x, this.pos.z);
+    if (this.state !== 'bench') this.pos.y = this.onBeach ? sandY(this.pos.x) : G.walkables.height(this.pos.x, this.pos.z);
     if (near) {
       this.phase += dt * moveSpeed * 2.6;
       if (this.singer && pose === 'walk') pose = 'swag';

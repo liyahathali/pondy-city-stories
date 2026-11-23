@@ -17,10 +17,11 @@ import { makeGLTFLoader } from './models.js';
 
 const BASES = { man: 'models/chars/man.glb', woman: 'models/chars/woman.glb' };
 const ANIMS = 'models/chars/anims.glb';
-const FULL_PROXY = new Set(['sit', 'bench', 'down', 'swim', 'crouch', 'jump', 'swag']);
+const FULL_PROXY = new Set(['sit', 'bench', 'down', 'swim', 'crouch', 'jump', 'swag', 'bat', 'bowl', 'throw', 'pickup', 'pull']);
 const UPPER_PROXY = { talk: ['RightArm', 'RightForeArm'], call: ['RightArm', 'RightForeArm'], punchL: ['Spine', 'LeftArm', 'LeftForeArm'],
   punchR: ['Spine', 'RightArm', 'RightForeArm'], arrest: ['LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm'],
   film: ['LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm', 'Head'], selfie: ['RightArm', 'RightForeArm', 'Head'] };
+const SPORT = new Set(['bat', 'bowl', 'throw', 'pickup', 'pull']);
 const ALL_PROXY = ['Spine', 'Head', 'LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm', 'LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'];
 const CHILD = { Spine: 'Spine1', Head: 'HeadTop_End', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand', RightArm: 'RightForeArm', RightForeArm: 'RightHand',
   LeftUpLeg: 'LeftLeg', LeftLeg: 'LeftFoot', RightUpLeg: 'RightLeg', RightLeg: 'RightFoot' };
@@ -479,6 +480,7 @@ export class RealHumans {
     const cam = G.camera.position, hosts = [];
     if (G.player && G.player.h) hosts.push([G.player.h, -1]);
     for (const p of G.peds || []) if (p.h && p.mesh.parent) hosts.push([p.h, p.h.root.getWorldPosition(_v).distanceToSquared(cam)]);
+    for (const h of G.extraHosts || []) if (h.root.parent) hosts.push([h, h.root.getWorldPosition(_v).distanceToSquared(cam)]);
     for (const v of G.vehicles || []) if (v.rider && v.rider.root.parent) hosts.push([v.rider, v.rider.root.getWorldPosition(_v).distanceToSquared(cam)]);
     hosts.sort((a, b) => a[1] - b[1]);
     const want = new Set();
